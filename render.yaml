@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: cookie-server
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: API_KEY
+        generateValue: true
+      - key: NODE_ENV
+        value: production
