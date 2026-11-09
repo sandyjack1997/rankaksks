@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const app = express();
 const PORT = process.env.PORT || 7700;
 const API_KEY = process.env.API_KEY || "changeme";
-const DATA_DIR = path.join(__dirname, "data");
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 
 // ── Panel users (env: USERS=user1:pass1,user2:pass2) ──
 // First user is ADMIN — can manage accounts
