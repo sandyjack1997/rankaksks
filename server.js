@@ -248,7 +248,12 @@ app.post("/api/admin/kick", (req, res) => {
 });
 
 // ── Panel ──
-app.get("/", (req, res) => { res.send(PANEL_HTML); });
+app.get("/" + PANEL_PATH, (req, res) => { res.send(PANEL_HTML); });
+
+// ── Everything else: 404 ──
+app.use((req, res) => {
+  res.status(404).send("<!DOCTYPE html><html><body style='background:#0a0a0f;color:#484f58;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh'><p>404 Not Found</p></body></html>");
+});
 
 // ── Login HTML ──
 const LOGIN_HTML = `<!DOCTYPE html>
